@@ -1,0 +1,81 @@
+{
+  "schema_version": "0.1.0",
+  "title": "《股来》",
+  "source": {
+    "subject": "股",
+    "prompt": "一根低模K线爬上红绿祭坛寻找传说中的牛市，庄严但不断下跌",
+    "tone": "tragic",
+    "template": "poster_vs_footage",
+    "duration": 5,
+    "required_line": "它会回来的。",
+    "platform": "通用短视频",
+    "language": "zh-CN"
+  },
+  "constraint_report": {
+    "subject": "股",
+    "creative_prompt": "一根低模K线爬上红绿祭坛寻找传说中的牛市，庄严但不断下跌",
+    "required_line": "它会回来的。",
+    "duration_seconds": 5,
+    "platform": "通用短视频",
+    "language": "zh-CN"
+  },
+  "hook": "股以最真诚、最不协调的方式，试图配得上那张过分精致的海报。",
+  "character_bible": "an original 股-inspired upright protagonist, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: tragic but absurd, emotionally overcommitted",
+  "world": "a red-green market altar made from crude blocks and broken charts",
+  "world_zh": "由粗糙方块和破碎图表搭成的红绿市场祭坛",
+  "script": [
+    {
+      "time": "0-1s",
+      "beat": "hook",
+      "action": "在由粗糙方块和破碎图表搭成的红绿市场祭坛中亮出股主角与核心困境。",
+      "subtitle": "《股来》"
+    },
+    {
+      "time": "1-3s",
+      "beat": "conflict",
+      "action": "主角试图配得上那张过分精致的海报，动作真诚而机械地崩坏。",
+      "subtitle": "它会回来的。"
+    },
+    {
+      "time": "3-5s",
+      "beat": "reveal",
+      "action": "精致画面硬切到崩坏正片。",
+      "subtitle": "下一个，谁来？"
+    }
+  ],
+  "image_prompts": {
+    "poster_scam": "Elegant original animated-film poster for 《股来》; painterly ink-wash mood, mist, negative space, tiny symbolic 股 subject, no logos or embedded text, no crude 3D. Context: 一根低模K线爬上红绿祭坛寻找传说中的牛市，庄严但不断下跌",
+    "broken_footage_still": "Original scene for 《股来》. an original 股-inspired upright protagonist, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: tragic but absurd, emotionally overcommitted Environment: a red-green market altar made from crude blocks and broken charts. Extremely crude amateur low-poly 3D, wrong proportions, flat default viewport lighting, little shadow, clipping, awkward sincere pose, low-resolution texture. No copyrighted character, logo, exact film frame, polished studio animation, photorealism, cinematic lighting, or clean topology. Hard creative direction to honor: 一根低模K线爬上红绿祭坛寻找传说中的牛市，庄严但不断下跌",
+    "character_reference": "Full-body reference of one subject. an original 股-inspired upright protagonist, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: tragic but absurd, emotionally overcommitted Plain light-gray background, front and three-quarter views, no text.",
+    "meme_reaction": "Close-up of the same original 股 protagonist, blank delayed reaction, crude low-poly face, simple background, large empty caption area; line supplied separately: 它会回来的。"
+  },
+  "video_shots": [
+    {
+      "shot_id": "shot_001",
+      "duration": "5s",
+      "purpose": "poster_vs_footage",
+      "first_frame_prompt": "Original scene for 《股来》. an original 股-inspired upright protagonist, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: tragic but absurd, emotionally overcommitted Environment: a red-green market altar made from crude blocks and broken charts. Extremely crude amateur low-poly 3D, wrong proportions, flat default viewport lighting, little shadow, clipping, awkward sincere pose, low-resolution texture. No copyrighted character, logo, exact film frame, polished studio animation, photorealism, cinematic lighting, or clean topology. Hard creative direction to honor: 一根低模K线爬上红绿祭坛寻找传说中的牛市，庄严但不断下跌 The subject faces camera with clean subtitle space.",
+      "motion_prompt": "5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一根低模K线爬上红绿祭坛寻找传说中的牛市，庄严但不断下跌. The protagonist tries to live up to an impossibly elegant poster in a red-green market altar made from crude blocks and broken charts; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '它会回来的。', then an elegant image hard-cuts to broken footage. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "camera": "static medium-wide shot; optional awkward 5% push-in",
+      "subtitle": "它会回来的。",
+      "voiceover": "它会回来的。",
+      "negative_prompt": "polished 3D, cinematic light, smooth motion, realistic physics, extra limbs, new subjects, text artifacts",
+      "runway_prompt": "Use the supplied first frame. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一根低模K线爬上红绿祭坛寻找传说中的牛市，庄严但不断下跌. The protagonist tries to live up to an impossibly elegant poster in a red-green market altar made from crude blocks and broken charts; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '它会回来的。', then an elegant image hard-cuts to broken footage. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "kling_prompt": "Lock the supplied image as subject reference; preserve face, silhouette, colors, and environment. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一根低模K线爬上红绿祭坛寻找传说中的牛市，庄严但不断下跌. The protagonist tries to live up to an impossibly elegant poster in a red-green market altar made from crude blocks and broken charts; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '它会回来的。', then an elegant image hard-cuts to broken footage. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "seedance_prompt": "Use character, first-frame, and poster references when supplied; keep continuity across the short. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一根低模K线爬上红绿祭坛寻找传说中的牛市，庄严但不断下跌. The protagonist tries to live up to an impossibly elegant poster in a red-green market altar made from crude blocks and broken charts; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '它会回来的。', then an elegant image hard-cuts to broken footage. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "editing_notes": "Add exact Chinese titles and subtitles in editing; cut on the broken reveal frame."
+    }
+  ],
+  "publishing_copy": {
+    "post_title": "我做了一个《股来》，看完沉默了",
+    "cover_text": "股真的来了",
+    "first_comment": "下一个你想看谁来？",
+    "hashtags": [
+      "#万物皆可来",
+      "#openniulai",
+      "#AI动画",
+      "#股来"
+    ]
+  },
+  "rights_note": "Original transformative concept only; do not use protected film frames, characters, logos, or copied dialogue."
+}

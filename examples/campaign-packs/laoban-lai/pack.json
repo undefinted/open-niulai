@@ -1,0 +1,81 @@
+{
+  "schema_version": "0.1.0",
+  "title": "《老板来》",
+  "source": {
+    "subject": "老板",
+    "prompt": "老板在下班前一分钟从空白会议室尽头滑来，手里只有一页战略升级",
+    "tone": "workplace",
+    "template": "ad_hook",
+    "duration": 5,
+    "required_line": "大家再坚持一下。",
+    "platform": "通用短视频",
+    "language": "zh-CN"
+  },
+  "constraint_report": {
+    "subject": "老板",
+    "creative_prompt": "老板在下班前一分钟从空白会议室尽头滑来，手里只有一页战略升级",
+    "required_line": "大家再坚持一下。",
+    "duration_seconds": 5,
+    "platform": "通用短视频",
+    "language": "zh-CN"
+  },
+  "hook": "老板以最真诚、最不协调的方式，试图熬过眼前这场荒谬危机。",
+  "character_bible": "an original office archetype with an asymmetric polygon head and a narrow suit body, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: deadpan workplace satire",
+  "world": "a flat fluorescent office wasteland with repeating desks and malformed documents",
+  "world_zh": "荧光灯扁平照亮、工位重复、文档变形的办公室荒原",
+  "script": [
+    {
+      "time": "0-1s",
+      "beat": "hook",
+      "action": "在荧光灯扁平照亮、工位重复、文档变形的办公室荒原中亮出老板主角与核心困境。",
+      "subtitle": "《老板来》"
+    },
+    {
+      "time": "1-3s",
+      "beat": "conflict",
+      "action": "主角试图熬过眼前这场荒谬危机，动作真诚而机械地崩坏。",
+      "subtitle": "大家再坚持一下。"
+    },
+    {
+      "time": "3-5s",
+      "beat": "reveal",
+      "action": "片名定格在最崩坏的一帧。",
+      "subtitle": "下一个，谁来？"
+    }
+  ],
+  "image_prompts": {
+    "poster_scam": "Elegant original animated-film poster for 《老板来》; painterly ink-wash mood, mist, negative space, tiny symbolic 老板 subject, no logos or embedded text, no crude 3D. Context: 老板在下班前一分钟从空白会议室尽头滑来，手里只有一页战略升级",
+    "broken_footage_still": "Original scene for 《老板来》. an original office archetype with an asymmetric polygon head and a narrow suit body, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: deadpan workplace satire Environment: a flat fluorescent office wasteland with repeating desks and malformed documents. Extremely crude amateur low-poly 3D, wrong proportions, flat default viewport lighting, little shadow, clipping, awkward sincere pose, low-resolution texture. No copyrighted character, logo, exact film frame, polished studio animation, photorealism, cinematic lighting, or clean topology. Hard creative direction to honor: 老板在下班前一分钟从空白会议室尽头滑来，手里只有一页战略升级",
+    "character_reference": "Full-body reference of one subject. an original office archetype with an asymmetric polygon head and a narrow suit body, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: deadpan workplace satire Plain light-gray background, front and three-quarter views, no text.",
+    "meme_reaction": "Close-up of the same original 老板 protagonist, blank delayed reaction, crude low-poly face, simple background, large empty caption area; line supplied separately: 大家再坚持一下。"
+  },
+  "video_shots": [
+    {
+      "shot_id": "shot_001",
+      "duration": "5s",
+      "purpose": "ad_hook",
+      "first_frame_prompt": "Original scene for 《老板来》. an original office archetype with an asymmetric polygon head and a narrow suit body, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: deadpan workplace satire Environment: a flat fluorescent office wasteland with repeating desks and malformed documents. Extremely crude amateur low-poly 3D, wrong proportions, flat default viewport lighting, little shadow, clipping, awkward sincere pose, low-resolution texture. No copyrighted character, logo, exact film frame, polished studio animation, photorealism, cinematic lighting, or clean topology. Hard creative direction to honor: 老板在下班前一分钟从空白会议室尽头滑来，手里只有一页战略升级 The subject faces camera with clean subtitle space.",
+      "motion_prompt": "5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 老板在下班前一分钟从空白会议室尽头滑来，手里只有一页战略升级. The protagonist tries to survive an immediate ridiculous crisis in a flat fluorescent office wasteland with repeating desks and malformed documents; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '大家再坚持一下。', then the title freezes on the most broken frame. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "camera": "static medium-wide shot; optional awkward 5% push-in",
+      "subtitle": "大家再坚持一下。",
+      "voiceover": "大家再坚持一下。",
+      "negative_prompt": "polished 3D, cinematic light, smooth motion, realistic physics, extra limbs, new subjects, text artifacts",
+      "runway_prompt": "Use the supplied first frame. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 老板在下班前一分钟从空白会议室尽头滑来，手里只有一页战略升级. The protagonist tries to survive an immediate ridiculous crisis in a flat fluorescent office wasteland with repeating desks and malformed documents; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '大家再坚持一下。', then the title freezes on the most broken frame. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "kling_prompt": "Lock the supplied image as subject reference; preserve face, silhouette, colors, and environment. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 老板在下班前一分钟从空白会议室尽头滑来，手里只有一页战略升级. The protagonist tries to survive an immediate ridiculous crisis in a flat fluorescent office wasteland with repeating desks and malformed documents; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '大家再坚持一下。', then the title freezes on the most broken frame. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "seedance_prompt": "Use character, first-frame, and poster references when supplied; keep continuity across the short. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 老板在下班前一分钟从空白会议室尽头滑来，手里只有一页战略升级. The protagonist tries to survive an immediate ridiculous crisis in a flat fluorescent office wasteland with repeating desks and malformed documents; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '大家再坚持一下。', then the title freezes on the most broken frame. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "editing_notes": "Add exact Chinese titles and subtitles in editing; cut on the broken reveal frame."
+    }
+  ],
+  "publishing_copy": {
+    "post_title": "我做了一个《老板来》，看完沉默了",
+    "cover_text": "老板真的来了",
+    "first_comment": "下一个你想看谁来？",
+    "hashtags": [
+      "#万物皆可来",
+      "#openniulai",
+      "#AI动画",
+      "#老板来"
+    ]
+  },
+  "rights_note": "Original transformative concept only; do not use protected film frames, characters, logos, or copied dialogue."
+}

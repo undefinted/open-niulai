@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1.0",
+  "status": "prepared",
+  "demo_id": "code-lai",
+  "title": "《代码来》",
+  "provider": "kling",
+  "duration_seconds": 5,
+  "input_image": "assets/demo/code-first-frame.png",
+  "prompt": "Use the supplied image as the subject reference and first frame; lock face, silhouette, palette, and prop. Original 《代码来》 shot. Preserve identity exactly: silhouette=tall terminal torso, crooked cuboid head, two thin legs, one short arm; palette=charcoal, phosphor green, red accent; face=one round eye, one slot eye, square mouth; surface=blurry abstract green lines on black terminal body; anchor prop=bent metal semicolon; repeatable defect=missing lower-right torso corner and inward-clipped left foot. The subject wakes with one jerky head tilt; the semicolon prop lifts a few centimeters; blank error windows blink once while the red button remains distant. Deliberately crude low-frame-rate amateur 3D motion, flat lighting, awkward sincerity, one subject and one main action. Keep framing stable. Do not add text, logos, characters, limbs, cinematic light, smooth motion, or camera shake.",
+  "subtitle": "它在我电脑上能跑。",
+  "negative_prompt": "new subject, identity drift, extra limbs, readable generated text, logo, watermark, smooth cinematic animation",
+  "submission": {
+    "mode": "external_adapter_required",
+    "note": "Upload input_image through the selected provider adapter, submit prompt, then poll to a terminal state."
+  },
+  "preview": "examples/rendered/code-kling/preview.mp4",
+  "captioned_preview": "examples/rendered/code-kling/preview-captioned.mp4"
+}

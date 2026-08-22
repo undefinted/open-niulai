@@ -1,0 +1,81 @@
+{
+  "schema_version": "0.1.0",
+  "title": "《猫来》",
+  "source": {
+    "subject": "猫",
+    "prompt": "一只猫穿过纸箱王国寻找最后一根猫条，不要妈妈梗，温柔但荒诞",
+    "tone": "tragic",
+    "template": "ad_hook",
+    "duration": 5,
+    "required_line": "会有的。",
+    "platform": "通用短视频",
+    "language": "zh-CN"
+  },
+  "constraint_report": {
+    "subject": "猫",
+    "creative_prompt": "一只猫穿过纸箱王国寻找最后一根猫条，不要妈妈梗，温柔但荒诞",
+    "required_line": "会有的。",
+    "duration_seconds": 5,
+    "platform": "通用短视频",
+    "language": "zh-CN"
+  },
+  "hook": "猫以最真诚、最不协调的方式，试图熬过眼前这场荒谬危机。",
+  "character_bible": "an original upright cat with a trapezoid head, uneven stick legs, and a kinked tail, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: tragic but absurd, emotionally overcommitted",
+  "world": "a cardboard city of crooked box towers, blank signboards, and folded-paper alleys",
+  "world_zh": "由歪斜纸箱高楼、空白路牌和折纸小巷组成的纸箱城市",
+  "script": [
+    {
+      "time": "0-1s",
+      "beat": "hook",
+      "action": "在由歪斜纸箱高楼、空白路牌和折纸小巷组成的纸箱城市中亮出猫主角与核心困境。",
+      "subtitle": "《猫来》"
+    },
+    {
+      "time": "1-3s",
+      "beat": "conflict",
+      "action": "主角试图熬过眼前这场荒谬危机，动作真诚而机械地崩坏。",
+      "subtitle": "会有的。"
+    },
+    {
+      "time": "3-5s",
+      "beat": "reveal",
+      "action": "片名定格在最崩坏的一帧。",
+      "subtitle": "下一个，谁来？"
+    }
+  ],
+  "image_prompts": {
+    "poster_scam": "Elegant original animated-film poster for 《猫来》; painterly ink-wash mood, mist, negative space, tiny symbolic 猫 subject, no logos or embedded text, no crude 3D. Context: 一只猫穿过纸箱王国寻找最后一根猫条，不要妈妈梗，温柔但荒诞",
+    "broken_footage_still": "Original scene for 《猫来》. an original upright cat with a trapezoid head, uneven stick legs, and a kinked tail, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: tragic but absurd, emotionally overcommitted Environment: a cardboard city of crooked box towers, blank signboards, and folded-paper alleys. Extremely crude amateur low-poly 3D, wrong proportions, flat default viewport lighting, little shadow, clipping, awkward sincere pose, low-resolution texture. No copyrighted character, logo, exact film frame, polished studio animation, photorealism, cinematic lighting, or clean topology. Hard creative direction to honor: 一只猫穿过纸箱王国寻找最后一根猫条，不要妈妈梗，温柔但荒诞",
+    "character_reference": "Full-body reference of one subject. an original upright cat with a trapezoid head, uneven stick legs, and a kinked tail, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: tragic but absurd, emotionally overcommitted Plain light-gray background, front and three-quarter views, no text.",
+    "meme_reaction": "Close-up of the same original 猫 protagonist, blank delayed reaction, crude low-poly face, simple background, large empty caption area; line supplied separately: 会有的。"
+  },
+  "video_shots": [
+    {
+      "shot_id": "shot_001",
+      "duration": "5s",
+      "purpose": "ad_hook",
+      "first_frame_prompt": "Original scene for 《猫来》. an original upright cat with a trapezoid head, uneven stick legs, and a kinked tail, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: tragic but absurd, emotionally overcommitted Environment: a cardboard city of crooked box towers, blank signboards, and folded-paper alleys. Extremely crude amateur low-poly 3D, wrong proportions, flat default viewport lighting, little shadow, clipping, awkward sincere pose, low-resolution texture. No copyrighted character, logo, exact film frame, polished studio animation, photorealism, cinematic lighting, or clean topology. Hard creative direction to honor: 一只猫穿过纸箱王国寻找最后一根猫条，不要妈妈梗，温柔但荒诞 The subject faces camera with clean subtitle space.",
+      "motion_prompt": "5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一只猫穿过纸箱王国寻找最后一根猫条，不要妈妈梗，温柔但荒诞. The protagonist tries to survive an immediate ridiculous crisis in a cardboard city of crooked box towers, blank signboards, and folded-paper alleys; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '会有的。', then the title freezes on the most broken frame. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "camera": "static medium-wide shot; optional awkward 5% push-in",
+      "subtitle": "会有的。",
+      "voiceover": "会有的。",
+      "negative_prompt": "polished 3D, cinematic light, smooth motion, realistic physics, extra limbs, new subjects, text artifacts",
+      "runway_prompt": "Use the supplied first frame. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一只猫穿过纸箱王国寻找最后一根猫条，不要妈妈梗，温柔但荒诞. The protagonist tries to survive an immediate ridiculous crisis in a cardboard city of crooked box towers, blank signboards, and folded-paper alleys; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '会有的。', then the title freezes on the most broken frame. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "kling_prompt": "Lock the supplied image as subject reference; preserve face, silhouette, colors, and environment. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一只猫穿过纸箱王国寻找最后一根猫条，不要妈妈梗，温柔但荒诞. The protagonist tries to survive an immediate ridiculous crisis in a cardboard city of crooked box towers, blank signboards, and folded-paper alleys; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '会有的。', then the title freezes on the most broken frame. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "seedance_prompt": "Use character, first-frame, and poster references when supplied; keep continuity across the short. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一只猫穿过纸箱王国寻找最后一根猫条，不要妈妈梗，温柔但荒诞. The protagonist tries to survive an immediate ridiculous crisis in a cardboard city of crooked box towers, blank signboards, and folded-paper alleys; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '会有的。', then the title freezes on the most broken frame. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "editing_notes": "Add exact Chinese titles and subtitles in editing; cut on the broken reveal frame."
+    }
+  ],
+  "publishing_copy": {
+    "post_title": "我做了一个《猫来》，看完沉默了",
+    "cover_text": "猫真的来了",
+    "first_comment": "下一个你想看谁来？",
+    "hashtags": [
+      "#万物皆可来",
+      "#openniulai",
+      "#AI动画",
+      "#猫来"
+    ]
+  },
+  "rights_note": "Original transformative concept only; do not use protected film frames, characters, logos, or copied dialogue."
+}

@@ -1,0 +1,54 @@
+{
+  "schema_version": "0.1.0",
+  "packs": [
+    {
+      "campaign_id": "mao-lai",
+      "title": "《猫来》",
+      "pack": "mao-lai/pack.json",
+      "production": "mao-lai/production.md",
+      "asset_status": "visual_ready"
+    },
+    {
+      "campaign_id": "gou-lai",
+      "title": "《狗来》",
+      "pack": "gou-lai/pack.json",
+      "production": "gou-lai/production.md",
+      "asset_status": "visual_ready"
+    },
+    {
+      "campaign_id": "jiafang-lai",
+      "title": "《甲方来》",
+      "pack": "jiafang-lai/pack.json",
+      "production": "jiafang-lai/production.md",
+      "asset_status": "visual_ready"
+    },
+    {
+      "campaign_id": "code-lai",
+      "title": "《代码来》",
+      "pack": "code-lai/pack.json",
+      "production": "code-lai/production.md",
+      "asset_status": "visual_ready"
+    },
+    {
+      "campaign_id": "laoban-lai",
+      "title": "《老板来》",
+      "pack": "laoban-lai/pack.json",
+      "production": "laoban-lai/production.md",
+      "asset_status": "visual_ready"
+    },
+    {
+      "campaign_id": "gu-lai",
+      "title": "《股来》",
+      "pack": "gu-lai/pack.json",
+      "production": "gu-lai/production.md",
+      "asset_status": "visual_ready"
+    },
+    {
+      "campaign_id": "ai-lai",
+      "title": "《AI来》",
+      "pack": "ai-lai/pack.json",
+      "production": "ai-lai/production.md",
+      "asset_status": "visual_ready"
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "schema_version": "0.1.0",
+  "north_star": "production_continuation_rate",
+  "campaigns": [
+    {
+      "id": "mao-lai",
+      "subject": "猫",
+      "audience": "general_pet",
+      "prompt": "一只猫穿过纸箱王国寻找最后一根猫条，不要妈妈梗，温柔但荒诞",
+      "required_line": "会有的。",
+      "template": "ad_hook",
+      "tone": "tragic",
+      "asset_status": "visual_ready"
+    },
+    {
+      "id": "gou-lai",
+      "subject": "狗",
+      "audience": "general_pet_shortdrama",
+      "prompt": "一只狗重生后获得三个词条：能闻、别叫、骨头会来，用短剧断章收尾",
+      "required_line": "这一世，我只找那根骨头。",
+      "template": "rebirth_shortdrama",
+      "tone": "shortdrama",
+      "asset_status": "visual_ready"
+    },
+    {
+      "id": "jiafang-lai",
+      "subject": "甲方",
+      "audience": "workplace",
+      "prompt": "甲方抱着第18版需求，打印机仍在吐出新的修改意见",
+      "required_line": "最后改一次。",
+      "template": "poster_vs_footage",
+      "tone": "workplace",
+      "asset_status": "visual_ready"
+    },
+    {
+      "id": "code-lai",
+      "subject": "代码",
+      "audience": "developer",
+      "prompt": "重生成一段没有分号的代码，词条是能跑、别动、上线再说",
+      "required_line": "它在我电脑上能跑。",
+      "template": "rebirth_shortdrama",
+      "tone": "meme",
+      "asset_status": "visual_ready"
+    },
+    {
+      "id": "laoban-lai",
+      "subject": "老板",
+      "audience": "workplace",
+      "prompt": "老板在下班前一分钟从空白会议室尽头滑来，手里只有一页战略升级",
+      "required_line": "大家再坚持一下。",
+      "template": "ad_hook",
+      "tone": "workplace",
+      "asset_status": "visual_ready"
+    },
+    {
+      "id": "gu-lai",
+      "subject": "股",
+      "audience": "market",
+      "prompt": "一根低模K线爬上红绿祭坛寻找传说中的牛市，庄严但不断下跌",
+      "required_line": "它会回来的。",
+      "template": "poster_vs_footage",
+      "tone": "tragic",
+      "asset_status": "visual_ready"
+    },
+    {
+      "id": "ai-lai",
+      "subject": "AI",
+      "audience": "ai_creator",
+      "prompt": "一个AI模型生成自己的低模身体，每次修复都会多出一个错误部件",
+      "required_line": "这次一定一致。",
+      "template": "budget_remake",
+      "tone": "uncanny",
+      "asset_status": "visual_ready"
+    }
+  ],
+  "experiments": [
+    {
+      "id": "opening-contrast",
+      "hypothesis": "精致海报硬切崩坏正片比直接展示崩坏正片提高3秒留存",
+      "variant_a": "poster_hard_cut",
+      "variant_b": "broken_frame_first",
+      "primary_metric": "three_second_rate",
+      "minimum_impressions_per_variant": 1000,
+      "keep_if_relative_lift": 0.2
+    },
+    {
+      "id": "comment-cta",
+      "hypothesis": "明确邀请点题比泛化提问提高评论率",
+      "variant_a": "下一个你想看谁来？",
+      "variant_b": "你怎么看？",
+      "primary_metric": "comment_rate",
+      "minimum_impressions_per_variant": 1000,
+      "keep_if_relative_lift": 0.3
+    },
+    {
+      "id": "identity-topic",
+      "hypothesis": "职场和开发者身份梗比动物题材获得更高分享率",
+      "variant_a": "identity",
+      "variant_b": "animal",
+      "primary_metric": "share_rate",
+      "minimum_impressions_per_variant": 1500,
+      "keep_if_relative_lift": 0.15
+    }
+  ]
+}

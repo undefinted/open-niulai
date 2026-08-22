@@ -1,0 +1,7 @@
+interface:
+  display_name: "Open NiuLai"
+  short_description: "Turn any prompt into an original X-lai production pack"
+  brand_color: "#E94435"
+  default_prompt: "Use $open-niulai to turn my idea into an original X-lai script, image, video, and launch package."
+policy:
+  allow_implicit_invocation: true

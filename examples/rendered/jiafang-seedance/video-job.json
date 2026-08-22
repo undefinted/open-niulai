@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1.0",
+  "status": "prepared",
+  "demo_id": "jiafang-lai",
+  "title": "《甲方来》",
+  "provider": "seedance",
+  "duration_seconds": 5,
+  "input_image": "assets/demo/jiafang-footage.png",
+  "prompt": "Use the supplied first frame plus character reference when the interface supports multiple references; preserve continuity. Original 《甲方来》 shot. Preserve identity exactly: silhouette=tall thin navy suit body, oversized asymmetric pale polygon head; palette=dark navy, pale beige, red accent; face=round left eye, square right eye, triangular nose, flat red lips; surface=dark rectangular suit and red tie; anchor prop=warped stack of revision papers; repeatable defect=misaligned eyes and inward-clipped feet. The subject raises its head stiffly; mouth movement starts late; the top paper slides off the stack. Feet stay planted and slightly clip into the floor. Deliberately crude low-frame-rate amateur 3D motion, flat lighting, awkward sincerity, one subject and one main action. Keep framing stable. Do not add text, logos, characters, limbs, cinematic light, smooth motion, or camera shake.",
+  "subtitle": "最后改一次。",
+  "negative_prompt": "new subject, identity drift, extra limbs, readable generated text, logo, watermark, smooth cinematic animation",
+  "submission": {
+    "mode": "external_adapter_required",
+    "note": "Upload input_image through the selected provider adapter, submit prompt, then poll to a terminal state."
+  },
+  "preview": "examples/rendered/jiafang-seedance/preview.mp4",
+  "captioned_preview": "examples/rendered/jiafang-seedance/preview-captioned.mp4"
+}

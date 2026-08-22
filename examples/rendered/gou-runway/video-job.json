@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1.0",
+  "status": "prepared",
+  "demo_id": "gou-lai",
+  "title": "《狗来》",
+  "provider": "runway",
+  "duration_seconds": 5,
+  "input_image": "assets/demo/gou-first-frame.png",
+  "prompt": "Use the supplied image as the first frame. Keep the prompt concise and motion-led. Original 《狗来》 shot. Preserve identity exactly: silhouette=huge horizontal brick head, wedge torso, long unequal legs, spiral tail; palette=faded olive-brown, dirty cream, cobalt-blue accent; face=drooping round left eye, tiny square right eye, rectangular nose, downturned mouth; surface=blurry mottled fur texture and blue collar; anchor prop=oversized crooked bone strapped diagonally across the back; repeatable defect=right ear embedded in head and disconnected left ankle mesh gap. The dog raises its brick head in one stiff movement; the spiral tail turns a quarter rotation; the strapped bone lags behind while the disconnected ankle stays visibly broken. Deliberately crude low-frame-rate amateur 3D motion, flat lighting, awkward sincerity, one subject and one main action. Keep framing stable. Do not add text, logos, characters, limbs, cinematic light, smooth motion, or camera shake.",
+  "subtitle": "这一世，我只找那根骨头。",
+  "negative_prompt": "new subject, identity drift, extra limbs, readable generated text, logo, watermark, smooth cinematic animation",
+  "submission": {
+    "mode": "external_adapter_required",
+    "note": "Upload input_image through the selected provider adapter, submit prompt, then poll to a terminal state."
+  },
+  "preview": "examples/rendered/gou-runway/preview.mp4",
+  "captioned_preview": "examples/rendered/gou-runway/preview-captioned.mp4"
+}

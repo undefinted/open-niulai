@@ -1,0 +1,26 @@
+name: X-lai idea or template
+description: Propose an original subject, story grammar, or production improvement
+title: "[Idea]: "
+labels: [idea]
+body:
+  - type: input
+    id: subject
+    attributes:
+      label: X-lai subject
+      placeholder: 例如：简历来
+    validations:
+      required: true
+  - type: textarea
+    id: hook
+    attributes:
+      label: Hook and audience
+      description: Explain the conflict, repeatable line, and who would share it.
+    validations:
+      required: true
+  - type: textarea
+    id: originality
+    attributes:
+      label: Originality check
+      description: Describe how this avoids copied characters, frames, logos, and dialogue.
+    validations:
+      required: true

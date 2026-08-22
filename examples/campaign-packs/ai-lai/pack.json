@@ -1,0 +1,81 @@
+{
+  "schema_version": "0.1.0",
+  "title": "《AI来》",
+  "source": {
+    "subject": "AI",
+    "prompt": "一个AI模型生成自己的低模身体，每次修复都会多出一个错误部件",
+    "tone": "uncanny",
+    "template": "budget_remake",
+    "duration": 5,
+    "required_line": "这次一定一致。",
+    "platform": "通用短视频",
+    "language": "zh-CN"
+  },
+  "constraint_report": {
+    "subject": "AI",
+    "creative_prompt": "一个AI模型生成自己的低模身体，每次修复都会多出一个错误部件",
+    "required_line": "这次一定一致。",
+    "duration_seconds": 5,
+    "platform": "通用短视频",
+    "language": "zh-CN"
+  },
+  "hook": "AI以最真诚、最不协调的方式，试图穿越低预算与幻想大片两个世界。",
+  "character_bible": "an original terminal-window humanoid with a crooked cuboid head and one missing body corner, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: light uncanny valley, comedic, no gore",
+  "world": "a server-room desert with floating error boxes and a flat blue floor",
+  "world_zh": "漂浮着空白报错框、地面纯蓝的服务器荒漠",
+  "script": [
+    {
+      "time": "0-1s",
+      "beat": "hook",
+      "action": "在漂浮着空白报错框、地面纯蓝的服务器荒漠中亮出AI主角与核心困境。",
+      "subtitle": "《AI来》"
+    },
+    {
+      "time": "1-3s",
+      "beat": "conflict",
+      "action": "主角试图穿越低预算与幻想大片两个世界，动作真诚而机械地崩坏。",
+      "subtitle": "这次一定一致。"
+    },
+    {
+      "time": "3-5s",
+      "beat": "reveal",
+      "action": "精致世界坍缩回扁平几何体。",
+      "subtitle": "下一个，谁来？"
+    }
+  ],
+  "image_prompts": {
+    "poster_scam": "Elegant original animated-film poster for 《AI来》; painterly ink-wash mood, mist, negative space, tiny symbolic AI subject, no logos or embedded text, no crude 3D. Context: 一个AI模型生成自己的低模身体，每次修复都会多出一个错误部件",
+    "broken_footage_still": "Original scene for 《AI来》. an original terminal-window humanoid with a crooked cuboid head and one missing body corner, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: light uncanny valley, comedic, no gore Environment: a server-room desert with floating error boxes and a flat blue floor. Extremely crude amateur low-poly 3D, wrong proportions, flat default viewport lighting, little shadow, clipping, awkward sincere pose, low-resolution texture. No copyrighted character, logo, exact film frame, polished studio animation, photorealism, cinematic lighting, or clean topology. Hard creative direction to honor: 一个AI模型生成自己的低模身体，每次修复都会多出一个错误部件",
+    "character_reference": "Full-body reference of one subject. an original terminal-window humanoid with a crooked cuboid head and one missing body corner, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: light uncanny valley, comedic, no gore Plain light-gray background, front and three-quarter views, no text.",
+    "meme_reaction": "Close-up of the same original AI protagonist, blank delayed reaction, crude low-poly face, simple background, large empty caption area; line supplied separately: 这次一定一致。"
+  },
+  "video_shots": [
+    {
+      "shot_id": "shot_001",
+      "duration": "5s",
+      "purpose": "budget_remake",
+      "first_frame_prompt": "Original scene for 《AI来》. an original terminal-window humanoid with a crooked cuboid head and one missing body corner, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: light uncanny valley, comedic, no gore Environment: a server-room desert with floating error boxes and a flat blue floor. Extremely crude amateur low-poly 3D, wrong proportions, flat default viewport lighting, little shadow, clipping, awkward sincere pose, low-resolution texture. No copyrighted character, logo, exact film frame, polished studio animation, photorealism, cinematic lighting, or clean topology. Hard creative direction to honor: 一个AI模型生成自己的低模身体，每次修复都会多出一个错误部件 The subject faces camera with clean subtitle space.",
+      "motion_prompt": "5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一个AI模型生成自己的低模身体，每次修复都会多出一个错误部件. The protagonist tries to cross between low-budget and imaginary premium worlds in a server-room desert with floating error boxes and a flat blue floor; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '这次一定一致。', then the polished world collapses back into flat geometry. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "camera": "static medium-wide shot; optional awkward 5% push-in",
+      "subtitle": "这次一定一致。",
+      "voiceover": "这次一定一致。",
+      "negative_prompt": "polished 3D, cinematic light, smooth motion, realistic physics, extra limbs, new subjects, text artifacts",
+      "runway_prompt": "Use the supplied first frame. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一个AI模型生成自己的低模身体，每次修复都会多出一个错误部件. The protagonist tries to cross between low-budget and imaginary premium worlds in a server-room desert with floating error boxes and a flat blue floor; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '这次一定一致。', then the polished world collapses back into flat geometry. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "kling_prompt": "Lock the supplied image as subject reference; preserve face, silhouette, colors, and environment. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一个AI模型生成自己的低模身体，每次修复都会多出一个错误部件. The protagonist tries to cross between low-budget and imaginary premium worlds in a server-room desert with floating error boxes and a flat blue floor; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '这次一定一致。', then the polished world collapses back into flat geometry. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "seedance_prompt": "Use character, first-frame, and poster references when supplied; keep continuity across the short. 5-second original short. Keep the first-frame subject and colors stable. Hard creative direction: 一个AI模型生成自己的低模身体，每次修复都会多出一个错误部件. The protagonist tries to cross between low-budget and imaginary premium worlds in a server-room desert with floating error boxes and a flat blue floor; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '这次一定一致。', then the polished world collapses back into flat geometry. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.",
+      "editing_notes": "Add exact Chinese titles and subtitles in editing; cut on the broken reveal frame."
+    }
+  ],
+  "publishing_copy": {
+    "post_title": "我做了一个《AI来》，看完沉默了",
+    "cover_text": "AI真的来了",
+    "first_comment": "下一个你想看谁来？",
+    "hashtags": [
+      "#万物皆可来",
+      "#openniulai",
+      "#AI动画",
+      "#AI来"
+    ]
+  },
+  "rights_note": "Original transformative concept only; do not use protected film frames, characters, logos, or copied dialogue."
+}

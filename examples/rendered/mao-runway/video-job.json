@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1.0",
+  "status": "prepared",
+  "demo_id": "mao-lai",
+  "title": "《猫来》",
+  "provider": "runway",
+  "duration_seconds": 5,
+  "input_image": "assets/demo/mao-first-frame.png",
+  "prompt": "Use the supplied image as the first frame. Keep the prompt concise and motion-led. Original 《猫来》 shot. Preserve identity exactly: silhouette=trapezoid head, short rectangular torso, four unequal legs, kinked tail; palette=dusty blue-gray, faded mustard, red accent; face=widely spaced mismatched round eyes, triangle nose, straight mouth; surface=patchy stretched fur texture and red collar; anchor prop=flattened empty treat wrapper on collar; repeatable defect=unequal legs and stretched right cheek texture. The cat slides forward one body length without a natural walk cycle; the kinked tail twitches once; the hanging wrapper swings late. Deliberately crude low-frame-rate amateur 3D motion, flat lighting, awkward sincerity, one subject and one main action. Keep framing stable. Do not add text, logos, characters, limbs, cinematic light, smooth motion, or camera shake.",
+  "subtitle": "会有的。",
+  "negative_prompt": "new subject, identity drift, extra limbs, readable generated text, logo, watermark, smooth cinematic animation",
+  "submission": {
+    "mode": "external_adapter_required",
+    "note": "Upload input_image through the selected provider adapter, submit prompt, then poll to a terminal state."
+  },
+  "preview": "examples/rendered/mao-runway/preview.mp4",
+  "captioned_preview": "examples/rendered/mao-runway/preview-captioned.mp4"
+}

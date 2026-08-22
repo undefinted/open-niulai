@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1.0",
+  "status": "prepared",
+  "demo_id": "laoban-lai",
+  "title": "《老板来》",
+  "provider": "kling",
+  "duration_seconds": 5,
+  "input_image": "assets/demo/laoban-first-frame.png",
+  "prompt": "Use the supplied image as the subject reference and first frame; lock face, silhouette, palette, and prop. Original 《老板来》 shot. Preserve identity exactly: silhouette=very wide inverted-triangle torso, tiny legs, long arms, squat cylindrical head; palette=charcoal gray, sickly pale yellow, magenta accent; face=two closed crescent eyes, too-wide rectangular smile, no visible nose; surface=blurry charcoal pinstripe suit and magenta tie; anchor prop=one oversized rigid blank strategy sheet; repeatable defect=high right shoulder separated by a mesh gap and left hand clipping through sheet. The boss slides one table-width toward camera without moving its tiny legs; the blank strategy sheet tilts once; the detached shoulder bobs late while the smile never changes. Deliberately crude low-frame-rate amateur 3D motion, flat lighting, awkward sincerity, one subject and one main action. Keep framing stable. Do not add text, logos, characters, limbs, cinematic light, smooth motion, or camera shake.",
+  "subtitle": "大家再坚持一下。",
+  "negative_prompt": "new subject, identity drift, extra limbs, readable generated text, logo, watermark, smooth cinematic animation",
+  "submission": {
+    "mode": "external_adapter_required",
+    "note": "Upload input_image through the selected provider adapter, submit prompt, then poll to a terminal state."
+  },
+  "preview": "examples/rendered/laoban-kling/preview.mp4",
+  "captioned_preview": "examples/rendered/laoban-kling/preview-captioned.mp4"
+}

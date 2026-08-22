@@ -1,0 +1,138 @@
+{
+  "schema_version": "0.1.0",
+  "demos": [
+    {
+      "id": "jiafang-lai",
+      "title": "《甲方来》",
+      "prompt": "甲方抱着第18版需求，说‘最后改一次’",
+      "identity_lock": {
+        "silhouette": "tall thin navy suit body, oversized asymmetric pale polygon head",
+        "palette": ["dark navy", "pale beige", "red accent"],
+        "face": "round left eye, square right eye, triangular nose, flat red lips",
+        "wardrobe_or_surface": "dark rectangular suit and red tie",
+        "anchor_prop": "warped stack of revision papers",
+        "damage_signature": "misaligned eyes and inward-clipped feet",
+        "scale": "roughly one office desk-height from feet to shoulder"
+      },
+      "assets": {
+        "poster": "assets/demo/jiafang-poster.png",
+        "character_reference": "assets/demo/jiafang-character-reference.png",
+        "first_frame": "assets/demo/jiafang-footage.png"
+      }
+    },
+    {
+      "id": "mao-lai",
+      "title": "《猫来》",
+      "prompt": "一只猫穿过纸箱王国寻找最后一根猫条，不要妈妈梗",
+      "identity_lock": {
+        "silhouette": "trapezoid head, short rectangular torso, four unequal legs, kinked tail",
+        "palette": ["dusty blue-gray", "faded mustard", "red accent"],
+        "face": "widely spaced mismatched round eyes, triangle nose, straight mouth",
+        "wardrobe_or_surface": "patchy stretched fur texture and red collar",
+        "anchor_prop": "flattened empty treat wrapper on collar",
+        "damage_signature": "unequal legs and stretched right cheek texture",
+        "scale": "subject head is about half its total height"
+      },
+      "assets": {
+        "poster": "assets/demo/mao-poster.png",
+        "character_reference": "assets/demo/mao-character-reference.png",
+        "first_frame": "assets/demo/mao-first-frame.png"
+      }
+    },
+    {
+      "id": "code-lai",
+      "title": "《代码来》",
+      "prompt": "重生成一段没有分号的代码，词条是能跑、别动、上线再说",
+      "identity_lock": {
+        "silhouette": "tall terminal torso, crooked cuboid head, two thin legs, one short arm",
+        "palette": ["charcoal", "phosphor green", "red accent"],
+        "face": "one round eye, one slot eye, square mouth",
+        "wardrobe_or_surface": "blurry abstract green lines on black terminal body",
+        "anchor_prop": "bent metal semicolon",
+        "damage_signature": "missing lower-right torso corner and inward-clipped left foot",
+        "scale": "protagonist is one-third the height of a server monolith"
+      },
+      "assets": {
+        "poster": "assets/demo/code-poster.png",
+        "character_reference": "assets/demo/code-character-reference.png",
+        "first_frame": "assets/demo/code-first-frame.png"
+      }
+    },
+    {
+      "id": "gou-lai",
+      "title": "《狗来》",
+      "prompt": "一只狗重生后获得三个词条，只寻找传说中的骨头",
+      "identity_lock": {
+        "silhouette": "huge horizontal brick head, wedge torso, long unequal legs, spiral tail",
+        "palette": ["faded olive-brown", "dirty cream", "cobalt-blue accent"],
+        "face": "drooping round left eye, tiny square right eye, rectangular nose, downturned mouth",
+        "wardrobe_or_surface": "blurry mottled fur texture and blue collar",
+        "anchor_prop": "oversized crooked bone strapped diagonally across the back",
+        "damage_signature": "right ear embedded in head and disconnected left ankle mesh gap",
+        "scale": "roughly the height of a cheap roadside sign"
+      },
+      "assets": {
+        "poster": "assets/demo/gou-poster.png",
+        "character_reference": "assets/demo/gou-character-reference.png",
+        "first_frame": "assets/demo/gou-first-frame.png"
+      }
+    },
+    {
+      "id": "laoban-lai",
+      "title": "《老板来》",
+      "prompt": "老板在下班前一分钟从空会议室尽头滑来，只拿一页战略升级",
+      "identity_lock": {
+        "silhouette": "very wide inverted-triangle torso, tiny legs, long arms, squat cylindrical head",
+        "palette": ["charcoal gray", "sickly pale yellow", "magenta accent"],
+        "face": "two closed crescent eyes, too-wide rectangular smile, no visible nose",
+        "wardrobe_or_surface": "blurry charcoal pinstripe suit and magenta tie",
+        "anchor_prop": "one oversized rigid blank strategy sheet",
+        "damage_signature": "high right shoulder separated by a mesh gap and left hand clipping through sheet",
+        "scale": "torso as wide as a small meeting table"
+      },
+      "assets": {
+        "poster": "assets/demo/laoban-poster.png",
+        "character_reference": "assets/demo/laoban-character-reference.png",
+        "first_frame": "assets/demo/laoban-first-frame.png"
+      }
+    },
+    {
+      "id": "gu-lai",
+      "title": "《股来》",
+      "prompt": "一根低模K线爬上红绿祭坛寻找传说中的牛市，庄严但不断下跌",
+      "identity_lock": {
+        "silhouette": "tall split candlestick rectangle with a long top wick, uneven arms, and peg legs",
+        "palette": ["muted market green", "brick red", "gold accent"],
+        "face": "up-triangle left eye, down-triangle right eye, flat mouth",
+        "wardrobe_or_surface": "red body half visibly clipped into the green half",
+        "anchor_prop": "bent gold upward arrow",
+        "damage_signature": "overlapping red-green body halves and mismatched thin limbs",
+        "scale": "roughly one altar step wide and three steps tall"
+      },
+      "assets": {
+        "poster": "assets/demo/gu-poster.png",
+        "character_reference": "assets/demo/gu-character-reference.png",
+        "first_frame": "assets/demo/gu-first-frame.png"
+      }
+    },
+    {
+      "id": "ai-lai",
+      "title": "《AI来》",
+      "prompt": "一个AI模型生成自己的低模身体，每次修复都会多出一个错误部件",
+      "identity_lock": {
+        "silhouette": "off-center faceted head, nested polyhedral torso, tiny legs, and three thin arms",
+        "palette": ["chalky cyan", "dirty off-white", "hot-pink accent"],
+        "face": "two oval eyes at different heights and a misaligned slot mouth",
+        "wardrobe_or_surface": "blurry checkerboard UV texture over mismatched polygon shells",
+        "anchor_prop": "tethered translucent checker cube",
+        "damage_signature": "wrongly attached third arm and one open missing torso face",
+        "scale": "about twice the height of a calibration pedestal"
+      },
+      "assets": {
+        "poster": "assets/demo/ai-poster.png",
+        "character_reference": "assets/demo/ai-character-reference.png",
+        "first_frame": "assets/demo/ai-first-frame.png"
+      }
+    }
+  ]
+}

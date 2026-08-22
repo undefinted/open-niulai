@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1.0",
+  "status": "prepared",
+  "demo_id": "ai-lai",
+  "title": "《AI来》",
+  "provider": "seedance",
+  "duration_seconds": 5,
+  "input_image": "assets/demo/ai-first-frame.png",
+  "prompt": "Use the supplied first frame plus character reference when the interface supports multiple references; preserve continuity. Original 《AI来》 shot. Preserve identity exactly: silhouette=off-center faceted head, nested polyhedral torso, tiny legs, and three thin arms; palette=chalky cyan, dirty off-white, hot-pink accent; face=two oval eyes at different heights and a misaligned slot mouth; surface=blurry checkerboard UV texture over mismatched polygon shells; anchor prop=tethered translucent checker cube; repeatable defect=wrongly attached third arm and one open missing torso face. The wrongly attached third arm unfolds late; the tethered cube jitters out of sync; the open torso mesh hole flickers once while the character stays planted. Deliberately crude low-frame-rate amateur 3D motion, flat lighting, awkward sincerity, one subject and one main action. Keep framing stable. Do not add text, logos, characters, limbs, cinematic light, smooth motion, or camera shake.",
+  "subtitle": "这次一定一致。",
+  "negative_prompt": "new subject, identity drift, extra limbs, readable generated text, logo, watermark, smooth cinematic animation",
+  "submission": {
+    "mode": "external_adapter_required",
+    "note": "Upload input_image through the selected provider adapter, submit prompt, then poll to a terminal state."
+  },
+  "preview": "examples/rendered/ai-seedance/preview.mp4",
+  "captioned_preview": "examples/rendered/ai-seedance/preview-captioned.mp4"
+}

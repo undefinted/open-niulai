@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.1.0",
+  "status": "prepared",
+  "demo_id": "gu-lai",
+  "title": "《股来》",
+  "provider": "runway",
+  "duration_seconds": 5,
+  "input_image": "assets/demo/gu-first-frame.png",
+  "prompt": "Use the supplied image as the first frame. Keep the prompt concise and motion-led. Original 《股来》 shot. Preserve identity exactly: silhouette=tall split candlestick rectangle with a long top wick, uneven arms, and peg legs; palette=muted market green, brick red, gold accent; face=up-triangle left eye, down-triangle right eye, flat mouth; surface=red body half visibly clipped into the green half; anchor prop=bent gold upward arrow; repeatable defect=overlapping red-green body halves and mismatched thin limbs. The candlestick climbs and slides up one altar step; the bent gold arrow wobbles, briefly points down, then points up again; the red-green body clipping remains visible. Deliberately crude low-frame-rate amateur 3D motion, flat lighting, awkward sincerity, one subject and one main action. Keep framing stable. Do not add text, logos, characters, limbs, cinematic light, smooth motion, or camera shake.",
+  "subtitle": "它会回来的。",
+  "negative_prompt": "new subject, identity drift, extra limbs, readable generated text, logo, watermark, smooth cinematic animation",
+  "submission": {
+    "mode": "external_adapter_required",
+    "note": "Upload input_image through the selected provider adapter, submit prompt, then poll to a terminal state."
+  },
+  "preview": "examples/rendered/gu-runway/preview.mp4",
+  "captioned_preview": "examples/rendered/gu-runway/preview-captioned.mp4"
+}

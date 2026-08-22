@@ -14,7 +14,7 @@ Turn any prompt into an original `X来` script, image set, video job, and launch
 
 ## GitHub Release Summary
 
-Open NiuLai turns a minimal idea such as `猫来` or `甲方来` into a structured production project: concept, practical script, image prompts/assets, identity lock, Runway/Kling/Seedance jobs, subtitles, and publishing copy. Version 0.2 adds a resumable CLI, three complete visual demos, provider-safe dry runs, and a tested Runway adapter.
+Open NiuLai turns a minimal idea such as `猫来` or `甲方来` into a structured production project: concept, practical script, image prompts/assets, identity lock, Runway/Kling/Seedance jobs, subtitles, and publishing copy. Version 0.2 includes a resumable CLI, seven complete visual demos, provider-safe dry runs, and a tested Runway adapter with persistent task recovery and media validation.
 
 Be precise at release time: unless a real Runway task has succeeded and its MP4 is bundled, call the existing clips `local production previews`, not `AI-generated videos`.
 
@@ -22,7 +22,7 @@ Be precise at release time: unless a real Runway task has succeeded and its MP4 
 
 Title: `我把“万物皆可来”做成开源工具了`
 
-Body: `输入一个词，它会补完剧本、角色、海报、崩坏首帧、视频提示词和发布文案。第一批是猫来、甲方来、代码来。最想看的下一个是谁？`
+Body: `输入一个词，它会补完剧本、角色、海报、崩坏首帧、视频提示词和发布文案。首发七套是猫、狗、甲方、代码、老板、股和 AI。最想看的下一个是谁？`
 
 Cover: `万物皆可来`
 

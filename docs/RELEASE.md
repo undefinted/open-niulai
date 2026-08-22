@@ -7,7 +7,7 @@
 - [ ] `python scripts/check_release.py` passes.
 - [ ] Wheel and source archive build successfully.
 - [ ] Installed `open-niulai --help` works in a clean environment.
-- [ ] Codex `quick_validate.py` passes for the Skill directory.
+- [ ] Codex `quick_validate.py` passes for the Skill directory (`PYTHONUTF8=1` on Windows when the system locale is not UTF-8).
 
 ## Media
 

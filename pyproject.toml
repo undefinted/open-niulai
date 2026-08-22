@@ -3,13 +3,13 @@ name = "open-niulai"
 version = "0.2.0"
 description = "Turn any prompt into an original X-lai meme animation production pack"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
 
 [project.scripts]
 open-niulai = "scripts.open_niulai:main"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]

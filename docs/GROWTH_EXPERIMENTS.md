@@ -40,3 +40,14 @@ The report computes three-second retention, completion, engagement, comment, sha
 - Compare posts on the same platform and similar publication windows.
 - Preserve losing variants and raw snapshots for audit.
 - Treat comments and stars as secondary. The north star is whether viewers export a project or create an external work.
+
+## GitHub Baseline
+
+Repository discovery is tracked separately from short-video experiments so stars and clones are never treated as impressions or retention. With an authenticated GitHub CLI, capture an auditable 14-day traffic snapshot:
+
+```bash
+python scripts/github_growth.py collect --repo undefinted/open-niulai
+python scripts/github_growth.py report
+```
+
+The collector reads GitHub's repository and traffic APIs through `gh api`; it never fabricates observations or stores credentials. `experiments/github-snapshots.csv` starts header-only and receives the first row only when collection succeeds.

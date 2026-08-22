@@ -1,7 +1,9 @@
 import importlib.util
+import shutil
 import sys
 from pathlib import Path
 
+import pytest
 from PIL import Image
 
 
@@ -47,6 +49,8 @@ def test_input_is_center_fitted_to_svd_dimensions():
 
 
 def test_media_validator_accepts_bundled_h264_preview():
+    if not shutil.which("ffprobe"):
+        pytest.skip("ffprobe is not installed on this test runner")
     result = MODULE.validate_video(ROOT / "examples" / "rendered" / "mao-runway" / "preview.mp4")
     assert result["duration"] == 5.0
     assert result["video_stream"]["codec_name"] == "h264"

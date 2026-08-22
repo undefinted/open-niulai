@@ -20,16 +20,17 @@ Install the optional backend dependencies in an environment with a CUDA-enabled 
 pip install "open-niulai[local-video]"
 ```
 
+For a project created with `open-niulai create`, use the unified command:
+
 ```bash
-python scripts/local_svd_adapter.py \
-  --image assets/demo/jiafang-footage.png \
-  --out examples/rendered/jiafang-local-svd/generated.mp4 \
+open-niulai generate-local-video \
+  --project path/to/project \
   --cache-dir /path/to/large/model/cache \
   --accept-model-license
 ```
 
 ## Generate
 
-Add `--run` after reviewing the plan. A successful run writes the MP4 atomically, validates it with `ffprobe`, and saves a provenance JSON containing the pinned model revision, input/output hashes, parameters, media probe, and GPU/runtime versions.
+Add `--run` after reviewing the plan. A successful run writes the MP4 atomically, validates it with `ffprobe`, saves a provenance JSON containing the pinned model revision, input/output hashes, parameters, media probe, and GPU/runtime versions, and marks the Open NiuLai project complete.
 
 Stable Video Diffusion does not accept a text motion prompt. It animates the first frame produced by the prompt-driven Open NiuLai image workflow. Runway remains the text-controlled production backend.

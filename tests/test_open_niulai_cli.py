@@ -37,12 +37,13 @@ def test_prompt_to_video_ready_project(tmp_path):
     assert created["state"] == "awaiting_images"
     assert (project / "content" / "pack.json").is_file()
     assert (project / "prompts" / "character_reference.txt").is_file()
-    assert all((project / "video" / provider / "video-job.json").is_file() for provider in MODULE.PROVIDERS)
+    assert "local-svd" in created["providers"]
+    assert all((project / "video" / provider / "video-job.json").is_file() for provider in MODULE.REMOTE_PROVIDERS)
 
     source = ROOT / "assets" / "demo" / "mao-first-frame.png"
     attached = MODULE.attach_first_frame(Namespace(project=project, image=source, replace=False))
     assert attached["state"] == "video_ready"
-    for provider in MODULE.PROVIDERS:
+    for provider in MODULE.REMOTE_PROVIDERS:
         job = json.loads((project / "video" / provider / "video-job.json").read_text(encoding="utf-8"))
         assert job["status"] == "prepared"
         assert job["input_image"].startswith("assets/first-frame")
@@ -82,3 +83,46 @@ def test_subject_must_be_inferable():
         assert "--subject" in str(exc)
     else:
         raise AssertionError("ambiguous subject was silently invented")
+
+
+def test_local_video_project_command_is_license_gated_and_dry_by_default(tmp_path):
+    project = tmp_path / "local"
+    MODULE.create_project(create_args(project))
+    source = ROOT / "assets" / "demo" / "mao-first-frame.png"
+    MODULE.attach_first_frame(Namespace(project=project, image=source, replace=False))
+    parsed = MODULE.parser().parse_args([
+        "generate-local-video",
+        "--project", str(project),
+        "--cache-dir", str(tmp_path / "model-cache"),
+        "--accept-model-license",
+    ])
+    result = parsed.handler(parsed)
+    assert result["generation"]["status"] == "dry-run"
+    assert MODULE.load_project(project)["state"] == "video_ready"
+
+
+def test_local_video_success_updates_project_only_with_durable_evidence(tmp_path, monkeypatch):
+    project = tmp_path / "local-complete"
+    MODULE.create_project(create_args(project))
+    source = ROOT / "assets" / "demo" / "mao-first-frame.png"
+    MODULE.attach_first_frame(Namespace(project=project, image=source, replace=False))
+
+    def fake_generate(args):
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.provenance.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_bytes(b"video")
+        args.provenance.write_text("{}", encoding="utf-8")
+        return {"status": "SUCCEEDED", "model_revision": "model-commit"}
+
+    monkeypatch.setattr(MODULE.local_svd_adapter, "generate", fake_generate)
+    parsed = MODULE.parser().parse_args([
+        "generate-local-video",
+        "--project", str(project),
+        "--cache-dir", str(tmp_path / "model-cache"),
+        "--accept-model-license",
+        "--run",
+    ])
+    result = parsed.handler(parsed)
+    assert result["project"]["state"] == "completed"
+    assert result["project"]["completed_provider"] == "local-svd"
+    assert (project / result["project"]["assets"]["generated_video"]).is_file()

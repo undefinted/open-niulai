@@ -18,13 +18,15 @@ if hasattr(sys.stdout, "reconfigure"):
 
 try:
     from scripts.build_open_niulai_pack import PackInput, TEMPLATES, build_pack, to_markdown
-    from scripts import runway_adapter
+    from scripts import local_svd_adapter, runway_adapter
 except ModuleNotFoundError:
     from build_open_niulai_pack import PackInput, TEMPLATES, build_pack, to_markdown
+    import local_svd_adapter
     import runway_adapter
 
 
-PROVIDERS = ("runway", "kling", "seedance")
+REMOTE_PROVIDERS = ("runway", "kling", "seedance")
+PROVIDERS = (*REMOTE_PROVIDERS, "local-svd")
 STATES = ("awaiting_images", "video_ready", "submitted", "completed", "failed")
 
 
@@ -117,7 +119,7 @@ def create_project(args: argparse.Namespace) -> dict:
         prompt_dir = root / "prompts"
         prompt_dir.mkdir(parents=True, exist_ok=True)
         (prompt_dir / f"{name}.txt").write_text(prompt + "\n", encoding="utf-8")
-    for provider in PROVIDERS:
+    for provider in REMOTE_PROVIDERS:
         write_json(root / "video" / provider / "video-job.json", make_video_job(pack, provider, None))
     write_json(root / "publish" / "copy.json", pack["publishing_copy"])
     assets_readme = "# Assets\n\nPlace generated files here through `attach-first-frame` or record poster/reference paths in `project.json`. Do not use protected film assets.\n"
@@ -159,7 +161,7 @@ def attach_asset(args: argparse.Namespace) -> dict:
     if kind == "first_frame":
         meta["state"] = "video_ready"
         pack = json.loads((root / "content" / "pack.json").read_text(encoding="utf-8"))
-        for provider in PROVIDERS:
+        for provider in REMOTE_PROVIDERS:
             write_json(root / "video" / provider / "video-job.json", make_video_job(pack, provider, relative))
     refresh_status(root, meta)
     return meta
@@ -226,6 +228,45 @@ def generate_video(args: argparse.Namespace) -> dict:
     return {"project": meta, "generation": result}
 
 
+def generate_local_video(args: argparse.Namespace) -> dict:
+    root = args.project.resolve()
+    meta = load_project(root)
+    first_frame = meta["assets"].get("first_frame")
+    if not first_frame:
+        raise ValueError("project needs an attached first frame before local video generation")
+    image = root / first_frame
+    output = root / "assets" / "generated-video-local-svd.mp4"
+    provenance = root / "video" / "local-svd" / "provenance.json"
+    local_args = argparse.Namespace(
+        image=image,
+        out=output,
+        cache_dir=args.cache_dir,
+        provenance=provenance,
+        model=args.model,
+        num_frames=args.num_frames,
+        fps=args.fps,
+        seed=args.seed,
+        motion_bucket_id=args.motion_bucket_id,
+        noise_aug_strength=args.noise_aug_strength,
+        decode_chunk_size=args.decode_chunk_size,
+        inference_steps=args.inference_steps,
+        accept_model_license=args.accept_model_license,
+        run=args.run,
+    )
+    result = local_svd_adapter.generate(local_args)
+    if result.get("status") != "SUCCEEDED":
+        return {"project_id": meta["project_id"], "provider": "local-svd", "generation": result}
+    if not output.is_file() or not provenance.is_file():
+        raise ValueError("local SVD reported success without durable video and provenance files")
+    meta["assets"]["generated_video"] = output.relative_to(root).as_posix()
+    meta["state"] = "completed"
+    meta["completed_provider"] = "local-svd"
+    meta["model_revision"] = result["model_revision"]
+    meta["video_provenance"] = provenance.relative_to(root).as_posix()
+    refresh_status(root, meta)
+    return {"project": meta, "generation": result}
+
+
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description=__doc__)
     commands = root.add_subparsers(dest="command", required=True)
@@ -271,6 +312,21 @@ def parser() -> argparse.ArgumentParser:
     generate.add_argument("--submit", action="store_true", help="Explicitly authorize a paid Runway generation")
     generate.set_defaults(handler=generate_video)
 
+    local = commands.add_parser("generate-local-video", help="Dry-run or generate locally with Stable Video Diffusion")
+    local.add_argument("--project", type=Path, required=True)
+    local.add_argument("--cache-dir", type=Path, required=True)
+    local.add_argument("--model", default=local_svd_adapter.DEFAULT_MODEL)
+    local.add_argument("--num-frames", type=int, default=25)
+    local.add_argument("--fps", type=int, default=7)
+    local.add_argument("--seed", type=int, default=42)
+    local.add_argument("--motion-bucket-id", type=int, default=90)
+    local.add_argument("--noise-aug-strength", type=float, default=0.03)
+    local.add_argument("--decode-chunk-size", type=int, default=2)
+    local.add_argument("--inference-steps", type=int, default=20)
+    local.add_argument("--accept-model-license", action="store_true")
+    local.add_argument("--run", action="store_true", help="Download weights if needed and perform GPU inference")
+    local.set_defaults(handler=generate_local_video)
+
     status = commands.add_parser("status", help="Print machine-readable project status")
     status.add_argument("--project", type=Path, required=True)
     status.set_defaults(handler=show_status)
@@ -281,7 +337,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
         result = args.handler(args)
-    except (OSError, json.JSONDecodeError, ValueError, runway_adapter.RunwayError) as exc:
+    except (OSError, json.JSONDecodeError, ValueError, runway_adapter.RunwayError, local_svd_adapter.LocalSVDError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(result, ensure_ascii=False, indent=2))

@@ -12,8 +12,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from PIL import Image, ImageOps
-
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
@@ -34,7 +32,11 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def prepare_image(path: Path, size: tuple[int, int] = (1024, 576)) -> Image.Image:
+def prepare_image(path: Path, size: tuple[int, int] = (1024, 576)):
+    try:
+        from PIL import Image, ImageOps
+    except ImportError as exc:
+        raise LocalSVDError("Pillow is required for the local SVD backend") from exc
     if not path.is_file():
         raise LocalSVDError(f"input image not found: {path}")
     with Image.open(path) as source:

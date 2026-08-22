@@ -2,6 +2,7 @@
 name = "open-niulai"
 version = "0.2.0"
 description = "Turn any prompt into an original X-lai meme animation production pack"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
 license = "MIT"
 

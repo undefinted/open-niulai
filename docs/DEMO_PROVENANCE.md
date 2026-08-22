@@ -56,4 +56,10 @@ No original-film screenshot, footage, character reference, logo, or copied dialo
 - Method: deterministic FFmpeg zoom preview from bundled first frames, H.264 at 24 fps, with optional `mov_text` subtitle track.
 - These files are explicitly local production previews, not outputs from Runway, Kling, or Seedance.
 
+## README Teaser
+
+- File: `assets/demo/open-niulai-teaser.gif`
+- Method: deterministic FFmpeg hard-cut loop from the bundled original `jiafang-poster.png` and `jiafang-footage.png` images; 480 x 480, 8 fps.
+- It is a lightweight repository preview, not a provider-generated video.
+
 When a real provider output is added, record provider, model, task date, duration, source first frame, and whether any manual editing occurred. Do not record an expiring output URL or API credential.

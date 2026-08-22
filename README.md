@@ -1,10 +1,15 @@
 # Open NiuLai
 
+[![CI](https://github.com/undefinted/open-niulai/actions/workflows/ci.yml/badge.svg)](https://github.com/undefinted/open-niulai/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > 万物皆可来。输入一个想法，得到一套能制作、能发布的原创《X来》短片方案。
 
 Open NiuLai 是一个 Codex Skill，也是一条面向 AI 短视频的内容生产工作流。它把一句 `猫来`、`甲方来` 或更完整的创意 prompt，扩写为剧本、角色设定、分镜、图片提示词、Runway/Kling/Seedance 视频提示词、字幕和发布文案。
 
 它不复刻《牛来》的角色、镜头或台词。项目提炼的是一种更通用的互联网创作语法：真诚、粗糙、低成本、反差强烈、适合二创。
+
+![Open NiuLai：精致海报硬切崩坏正片](assets/demo/open-niulai-teaser.gif)
 
 ## 一句话到两种世界
 

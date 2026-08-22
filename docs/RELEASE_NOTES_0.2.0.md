@@ -8,6 +8,7 @@ Open NiuLai turns an arbitrary prompt into an original `X来` production project
 - `open-niulai create`, asset attachment, project status, video archival, and `generate-video` commands.
 - Seven original visual demo sets: 猫、狗、甲方、代码、老板、股、AI.
 - Runway `gen4.5` image-to-video adapter with free dry-run by default and explicit paid submission.
+- Optional license-gated local Stable Video Diffusion backend for CUDA systems with about 8 GB VRAM.
 - Paid task ID persistence, bounded polling, resumable recovery, atomic download, and `ffprobe` validation.
 - Portable Kling and Seedance job exports plus local H.264 production previews.
 - GitHub and short-video growth measurement with production CSV files that reject synthetic observations.
@@ -20,7 +21,7 @@ The bundled `examples/rendered/*/preview*.mp4` files are deterministic FFmpeg pr
 
 ## Draft Blocker
 
-Do not publish this draft until [Issue #1](https://github.com/undefinted/open-niulai/issues/1) is complete. A public `v0.2.0` release must include one locally archived provider-generated MP4, successful media probe evidence, provider/model/task provenance, and proof that timeout recovery did not create a duplicate paid task.
+Do not publish this draft until a real model-generated video gate is complete. A public `v0.2.0` release must include one locally archived MP4, successful media probe evidence, model/provider provenance, input/output hashes, and the applicable execution safety evidence. Runway output must also prove timeout recovery did not create a duplicate paid task; local SVD output must record explicit model-license acceptance and a pinned model revision.
 
 ## Verification
 

@@ -13,7 +13,7 @@ ROOT = Path(__file__).parents[1]
 REQUIRED = (
     "README.md", "LICENSE", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SECURITY.md",
     "SKILL.md", "agents/openai.yaml", "docs/CLI.md", "docs/PLAN.md", "docs/RUNWAY.md",
-    "docs/IP_POLICY.md", "docs/RELEASE.md", "docs/DEMO_PROVENANCE.md", "docs/LAUNCH.md",
+    "docs/IP_POLICY.md", "docs/RELEASE.md", "docs/DEMO_PROVENANCE.md", "docs/LAUNCH.md", "docs/LOCAL_VIDEO.md",
     "docs/GROWTH_EXPERIMENTS.md", "experiments/campaign.json", "experiments/events.csv",
     "examples/campaign-packs/index.json",
     ".github/workflows/ci.yml", ".gitattributes",

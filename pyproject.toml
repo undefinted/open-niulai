@@ -9,6 +9,18 @@ license = "MIT"
 [project.scripts]
 open-niulai = "scripts.open_niulai:main"
 
+[project.optional-dependencies]
+local-video = [
+  "torch>=2.0",
+  "diffusers>=0.35,<0.38",
+  "transformers>=4.46,<5",
+  "accelerate>=1,<2",
+  "safetensors>=0.4",
+  "huggingface_hub>=0.27",
+  "Pillow>=10",
+  "imageio-ffmpeg>=0.5",
+]
+
 [build-system]
 requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"

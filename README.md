@@ -69,6 +69,8 @@ python scripts/build_video_job.py --demo mao-lai --provider runway --duration 5 
 
 `open-niulai generate-video --project <目录>` 默认只做不产生费用的 dry run。设置本地 `RUNWAYML_API_SECRET` 后，增加显式 `--submit` 才会提交真实生成任务；任务 ID 会立即落盘，超时重试默认恢复原任务，成片通过媒体检查后才进入完成状态。详见 [Runway 接入说明](docs/RUNWAY.md)。
 
+没有视频 API 凭据时，也可使用 [本地 SVD 后端](docs/LOCAL_VIDEO.md) 将首帧真正动画化。它需要约 8 GB 显存、较大的模型缓存，以及操作者明确接受第三方模型许可证；默认只做 dry run。
+
 ## 默认交付
 
 - 原创标题、钩子、角色与世界设定

@@ -21,9 +21,9 @@ The bundled `examples/rendered/*/preview*.mp4` files are deterministic FFmpeg pr
 
 The bundled `assets/demo/mao-lai-svd.ai-video.mp4` is a real Stable Video Diffusion output. Its pinned model revision, explicit license-acceptance evidence, generation parameters, media probe, and input/output hashes are recorded in the adjacent provenance JSON. The captioned file is a clearly identified FFmpeg derivative.
 
-## Remaining Launch Work
+## Post-release Validation
 
-The real model-generated video gate is complete. Public launch still requires the repository checks and CI to pass for this commit, followed by a real-user/platform experiment; do not describe repository traffic alone as proof of short-video propagation.
+The real model-generated video gate, repository checks, and cross-platform CI are complete. The remaining product objective is a real-user/platform experiment after package publication; repository traffic alone is not proof of short-video propagation.
 
 ## Verification
 

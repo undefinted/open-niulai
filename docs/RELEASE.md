@@ -3,7 +3,7 @@
 ## Code And Skill
 
 - [x] Version in `pyproject.toml` matches the intended tag.
-- [ ] `python -m pytest -q` passes on Windows and Linux.
+- [x] `python -m pytest -q` passes on Windows and Linux.
 - [x] `python scripts/check_release.py` passes.
 - [x] `python scripts/check_release.py --require-ai-video` passes for a public release.
 - [x] Wheel and source archive build successfully.

@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import sys
+import tomllib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,6 +16,12 @@ SPEC.loader.exec_module(MODULE)
 
 def test_release_structure_and_links_are_valid():
     assert MODULE.check() == []
+
+
+def test_local_video_extra_pins_numpy_before_two():
+    project = tomllib.loads((MODULE.ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    dependencies = project["project"]["optional-dependencies"]["local-video"]
+    assert "numpy>=1.24,<2" in dependencies
 
 
 def test_public_release_gate_requires_real_ai_video():

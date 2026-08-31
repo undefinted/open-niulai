@@ -19,17 +19,19 @@ Open NiuLai turns an arbitrary prompt into an original `X来` production project
 
 The bundled `examples/rendered/*/preview*.mp4` files are deterministic FFmpeg production previews made from first-frame images. They are not outputs from Runway, Kling, or Seedance. The README teaser is also a local FFmpeg hard-cut loop.
 
-## Draft Blocker
+The bundled `assets/demo/mao-lai-svd.ai-video.mp4` is a real Stable Video Diffusion output. Its pinned model revision, explicit license-acceptance evidence, generation parameters, media probe, and input/output hashes are recorded in the adjacent provenance JSON. The captioned file is a clearly identified FFmpeg derivative.
 
-Do not publish this draft until a real model-generated video gate is complete. A public `v0.2.0` release must include one locally archived MP4, successful media probe evidence, model/provider provenance, input/output hashes, and the applicable execution safety evidence. Runway output must also prove timeout recovery did not create a duplicate paid task; local SVD output must record explicit model-license acceptance and a pinned model revision.
+## Remaining Launch Work
+
+The real model-generated video gate is complete. Public launch still requires the repository checks and CI to pass for this commit, followed by a real-user/platform experiment; do not describe repository traffic alone as proof of short-video propagation.
 
 ## Verification
 
-- Local test suite: 39 tests passing at RC preparation time.
+- Local test suite: 39 tests passed on Windows during the final media audit.
 - GitHub Actions: Windows/Linux x Python 3.10/3.12.
 - Release structure and README links validated.
-- Public-release gate intentionally fails until a real model-generated MP4 and verified provenance are committed.
-- Wheel tested in an isolated virtual environment.
+- Public-release gate validates the real model-generated MP4, relative media paths, hashes, and `ffprobe` result.
+- Wheel and source archive built in an isolated PEP 517 environment; the wheel was installed and smoke-tested in a fresh virtual environment.
 - Skill frontmatter and structure validated with Codex `quick_validate.py`.
 
 ## CTA

@@ -34,6 +34,8 @@ Open NiuLai 是一个 Codex Skill，也是一条面向 AI 短视频的内容生�
 每套资产的角色不变量与路径记录在 [demo manifest](examples/demo-manifest.json)，可由视频流水线直接读取。
 素材生成方式与输入边界记录在 [demo provenance](docs/DEMO_PROVENANCE.md)。
 
+《猫来》现已包含一次真实本地 SVD 推理生成的 [原始 AI 视频](assets/demo/mao-lai-svd.ai-video.mp4) 与 [带字幕版](assets/demo/mao-lai-svd-captioned.mp4)。模型 revision、参数、媒体探测和输入/输出哈希记录在 [可验证 provenance](assets/demo/mao-lai-svd.ai-video.provenance.json)。
+
 ## 为什么不是另一个风格提示词仓库
 
 | 风格提示词仓库 | Open NiuLai |
@@ -125,7 +127,7 @@ open-niulai --help
 
 ## 产品路线
 
-MVP 已覆盖文本生产、直接图片工作流、多视频后端导出，以及 Runway 与本地 SVD 的真实生成适配器。正式 `v0.2.0` 发布仍要求至少一条真实模型成片通过媒体、来源与哈希门禁；详细优先级、增长实验与成功指标见 [docs/PLAN.md](docs/PLAN.md)。
+MVP 已覆盖文本生产、直接图片工作流、多视频后端导出，以及 Runway 与本地 SVD 的真实生成适配器。《猫来》真实模型成片已通过媒体、来源与哈希门禁；详细优先级、增长实验与成功指标见 [docs/PLAN.md](docs/PLAN.md)。
 
 ## 增长实验
 

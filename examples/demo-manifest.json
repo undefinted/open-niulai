@@ -36,7 +36,10 @@
       "assets": {
         "poster": "assets/demo/mao-poster.png",
         "character_reference": "assets/demo/mao-character-reference.png",
-        "first_frame": "assets/demo/mao-first-frame.png"
+        "first_frame": "assets/demo/mao-first-frame.png",
+        "ai_video": "assets/demo/mao-lai-svd.ai-video.mp4",
+        "captioned_video": "assets/demo/mao-lai-svd-captioned.mp4",
+        "video_provenance": "assets/demo/mao-lai-svd.ai-video.provenance.json"
       }
     },
     {

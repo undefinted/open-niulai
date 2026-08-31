@@ -16,6 +16,9 @@ No original-film screenshot, footage, character reference, logo, or copied dialo
 - Files: `assets/demo/mao-*.png`
 - Concept: an original trapezoid-headed cat searching a cardboard valley for the last treat.
 - Inputs: text prompt for character sheet, then that generated sheet as identity reference for poster and first frame.
+- Real AI video: `assets/demo/mao-lai-svd.ai-video.mp4`, generated locally on 2026-08-31 with `stabilityai/stable-video-diffusion-img2vid-xt` revision `9e43909513c6714f1bc78bcb44d96e733cd242aa` after explicit operator license acceptance.
+- Video input: `assets/demo/mao-first-frame.png`; no original-film footage, frame, logo, or character reference was used.
+- Verification: `assets/demo/mao-lai-svd.ai-video.provenance.json` records generation parameters, hardware/runtime, media probe, and SHA-256 hashes. `assets/demo/mao-lai-svd-captioned.mp4` is an FFmpeg subtitle-only derivative.
 
 ## 代码来
 
@@ -62,4 +65,4 @@ No original-film screenshot, footage, character reference, logo, or copied dialo
 - Method: deterministic FFmpeg hard-cut loop from the bundled original `jiafang-poster.png` and `jiafang-footage.png` images; 480 x 480, 8 fps.
 - It is a lightweight repository preview, not a provider-generated video.
 
-When a real provider output is added, record provider, model, task date, duration, source first frame, and whether any manual editing occurred. Do not record an expiring output URL or API credential.
+For every real provider or local-model output, record provider/backend, model revision, task date, duration, source first frame, hashes, and whether any manual editing occurred. Do not record an expiring output URL or API credential.

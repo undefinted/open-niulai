@@ -58,5 +58,5 @@ def test_demo_manifest_has_complete_existing_asset_sets():
     identity_fields = {"silhouette", "palette", "face", "wardrobe_or_surface", "anchor_prop", "damage_signature", "scale"}
     for demo in manifest["demos"]:
         assert identity_fields == set(demo["identity_lock"])
-        assert {"poster", "character_reference", "first_frame"} == set(demo["assets"])
+        assert {"poster", "character_reference", "first_frame"} <= set(demo["assets"])
         assert all((root / path).is_file() for path in demo["assets"].values())

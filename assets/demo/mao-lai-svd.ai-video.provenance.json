@@ -1,0 +1,51 @@
+{
+  "schema_version": "0.1.0",
+  "generated_at": "2026-08-31T04:59:11+00:00",
+  "backend": "local-svd",
+  "model": "stabilityai/stable-video-diffusion-img2vid-xt",
+  "model_revision": "9e43909513c6714f1bc78bcb44d96e733cd242aa",
+  "model_license": "https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt/blob/main/LICENSE.md",
+  "license_acceptance": {
+    "accepted_by": "local operator",
+    "accepted_at": "2026-08-31",
+    "execution_flag": "--accept-model-license"
+  },
+  "source_image": "assets/demo/mao-first-frame.png",
+  "source_image_sha256": "96b38bf7da1bfc1174b32f78d634f0708e56112e2d113734b59765aa075a1a85",
+  "output_file": "assets/demo/mao-lai-svd.ai-video.mp4",
+  "output_sha256": "8c022c88f12a0b5383fb6e01558b6b993bd39c303f226c1e7af2eac02f6c6fd2",
+  "parameters": {
+    "width": 1024,
+    "height": 576,
+    "num_frames": 25,
+    "fps": 7,
+    "seed": 42,
+    "motion_bucket_id": 90,
+    "noise_aug_strength": 0.03,
+    "decode_chunk_size": 2,
+    "inference_steps": 20,
+    "memory_strategy": "fp16 + model CPU offload + UNet forward chunking"
+  },
+  "media": {
+    "duration": 3.572,
+    "video_stream": {
+      "codec_name": "h264",
+      "codec_type": "video",
+      "width": 1024,
+      "height": 576,
+      "nb_frames": "25"
+    }
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "torch": "2.5.1+cu121",
+    "cuda": "12.1"
+  },
+  "manual_editing": false,
+  "captioned_derivative": {
+    "file": "assets/demo/mao-lai-svd-captioned.mp4",
+    "sha256": "b4742bccbe7c254193d540beedfdc7f110fcc84bd9cd0b3309c2a752c788a85b",
+    "subtitle_source": "assets/demo/mao-lai-svd.srt",
+    "editing": "FFmpeg subtitle burn-in only; no frame generation or retiming"
+  }
+}

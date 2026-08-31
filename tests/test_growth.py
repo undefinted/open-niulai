@@ -82,5 +82,5 @@ def test_visual_ready_campaigns_have_complete_manifest_assets():
     assert len(visual) == 7
     for campaign in visual:
         assert campaign["id"] in demos
-        assert {"poster", "character_reference", "first_frame"} == set(demos[campaign["id"]]["assets"])
+        assert {"poster", "character_reference", "first_frame"} <= set(demos[campaign["id"]]["assets"])
         assert all((ROOT / path).is_file() for path in demos[campaign["id"]]["assets"].values())

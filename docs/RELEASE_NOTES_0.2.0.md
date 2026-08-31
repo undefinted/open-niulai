@@ -25,9 +25,10 @@ Do not publish this draft until a real model-generated video gate is complete. A
 
 ## Verification
 
-- Local test suite: 29 tests passing at RC preparation time.
+- Local test suite: 37 tests passing at RC preparation time.
 - GitHub Actions: Windows/Linux x Python 3.10/3.12.
 - Release structure and README links validated.
+- Public-release gate intentionally fails until a real model-generated MP4 and verified provenance are committed.
 - Wheel tested in an isolated virtual environment.
 - Skill frontmatter and structure validated with Codex `quick_validate.py`.
 

@@ -5,6 +5,7 @@
 - [ ] Version in `pyproject.toml` matches the intended tag.
 - [ ] `python -m pytest -q` passes on Windows and Linux.
 - [ ] `python scripts/check_release.py` passes.
+- [ ] `python scripts/check_release.py --require-ai-video` passes for a public release.
 - [ ] Wheel and source archive build successfully.
 - [ ] Installed `open-niulai --help` works in a clean environment.
 - [ ] Codex `quick_validate.py` passes for the Skill directory (`PYTHONUTF8=1` on Windows when the system locale is not UTF-8).

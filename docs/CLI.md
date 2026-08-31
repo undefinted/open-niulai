@@ -57,3 +57,11 @@ open-niulai status --project projects/waimai-lai
 ```
 
 State values are `awaiting_images`, `video_ready`, `submitted`, `completed`, and `failed`. Existing assets are never replaced unless the user passes `--replace` explicitly.
+
+## Diagnose Video Backends
+
+```bash
+open-niulai doctor
+```
+
+The command checks FFmpeg/FFprobe, whether a Runway secret is configured, local SVD packages, CUDA, GPU detection, and pipeline import compatibility. It returns JSON with concrete next actions. It never prints secret values, downloads model weights, accepts a model license, or submits a paid task.

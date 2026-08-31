@@ -126,3 +126,20 @@ def test_local_video_success_updates_project_only_with_durable_evidence(tmp_path
     assert result["project"]["state"] == "completed"
     assert result["project"]["completed_provider"] == "local-svd"
     assert (project / result["project"]["assets"]["generated_video"]).is_file()
+
+
+def test_doctor_reports_backend_readiness_without_exposing_secret(monkeypatch):
+    monkeypatch.setenv("RUNWAYML_API_SECRET", "do-not-print-this")
+    monkeypatch.setattr(MODULE.shutil, "which", lambda name: f"/tools/{name}")
+    monkeypatch.setattr(MODULE, "local_video_runtime", lambda: {
+        "packages": {"torch": True},
+        "cuda_available": True,
+        "gpu": "Test GPU",
+        "pipeline_import": True,
+        "error": None,
+    })
+    result = MODULE.doctor(Namespace())
+    assert result["runway"] == {"secret_configured": True, "ready": True}
+    assert result["local_svd"]["ready"] is True
+    assert result["any_video_backend_ready"] is True
+    assert "do-not-print-this" not in json.dumps(result)

@@ -71,6 +71,8 @@ python scripts/build_video_job.py --demo mao-lai --provider runway --duration 5 
 
 没有视频 API 凭据时，也可使用 [本地 SVD 后端](docs/LOCAL_VIDEO.md) 将首帧真正动画化。它需要约 8 GB 显存、较大的模型缓存，以及操作者明确接受第三方模型许可证；默认只做 dry run。
 
+先运行 `open-niulai doctor` 可检查 FFmpeg、Runway 配置、本地依赖、CUDA 与 SVD 管线导入；诊断不会显示密钥、下载模型或提交任务。
+
 ## 默认交付
 
 - 原创标题、钩子、角色与世界设定

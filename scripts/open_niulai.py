@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import re
 import shutil
@@ -190,6 +191,54 @@ def show_status(args: argparse.Namespace) -> dict:
     return load_project(args.project.resolve())
 
 
+def local_video_runtime() -> dict:
+    packages = ("torch", "diffusers", "transformers", "accelerate", "safetensors", "huggingface_hub", "PIL", "imageio_ffmpeg")
+    installed = {name: importlib.util.find_spec(name) is not None for name in packages}
+    result = {"packages": installed, "cuda_available": False, "gpu": None, "pipeline_import": False, "error": None}
+    if not all(installed.values()):
+        result["error"] = "missing optional dependencies; install open-niulai[local-video]"
+        return result
+    try:
+        import torch
+        from diffusers import StableVideoDiffusionPipeline  # noqa: F401
+
+        result["cuda_available"] = bool(torch.cuda.is_available())
+        result["gpu"] = torch.cuda.get_device_name(0) if result["cuda_available"] else None
+        result["pipeline_import"] = True
+        if not result["cuda_available"]:
+            result["error"] = "CUDA GPU is not available"
+    except Exception as exc:  # Runtime packages can fail from binary incompatibilities.
+        result["error"] = f"{type(exc).__name__}: {str(exc)[:300]}"
+    return result
+
+
+def doctor(args: argparse.Namespace) -> dict:
+    del args
+    ffmpeg = shutil.which("ffmpeg") is not None
+    ffprobe = shutil.which("ffprobe") is not None
+    runway_secret = bool(os.environ.get("RUNWAYML_API_SECRET"))
+    local = local_video_runtime()
+    runway_ready = runway_secret and ffprobe
+    local_ready = bool(ffmpeg and ffprobe and local["pipeline_import"] and local["cuda_available"])
+    next_actions = []
+    if not runway_secret:
+        next_actions.append("Configure RUNWAYML_API_SECRET locally to enable explicit paid Runway submission.")
+    if not all(local["packages"].values()):
+        next_actions.append("Install the local backend with: pip install 'open-niulai[local-video]'.")
+    elif not local_ready:
+        next_actions.append("Resolve the reported local SVD runtime error before downloading model weights.")
+    if local_ready:
+        next_actions.append("Review the SVD model license; generation still requires explicit --accept-model-license --run.")
+    return {
+        "schema_version": "0.1.0",
+        "tools": {"ffmpeg": ffmpeg, "ffprobe": ffprobe},
+        "runway": {"secret_configured": runway_secret, "ready": runway_ready},
+        "local_svd": {**local, "ready": local_ready},
+        "any_video_backend_ready": runway_ready or local_ready,
+        "next_actions": next_actions,
+    }
+
+
 def generate_video(args: argparse.Namespace) -> dict:
     root = args.project.resolve()
     meta = load_project(root)
@@ -330,6 +379,9 @@ def parser() -> argparse.ArgumentParser:
     status = commands.add_parser("status", help="Print machine-readable project status")
     status.add_argument("--project", type=Path, required=True)
     status.set_defaults(handler=show_status)
+
+    diagnostics = commands.add_parser("doctor", help="Check image/video production runtime readiness without submitting jobs")
+    diagnostics.set_defaults(handler=doctor)
     return root
 
 

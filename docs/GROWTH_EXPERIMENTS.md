@@ -51,3 +51,5 @@ python scripts/github_growth.py report
 ```
 
 The collector reads GitHub's repository and traffic APIs through `gh api`; it never fabricates observations or stores credentials. `experiments/github-snapshots.csv` starts header-only and receives the first row only when collection succeeds.
+
+The 2026-08-31 snapshot establishes a real discovery baseline: 19 views from 5 unique visitors and 95 clones from 41 unique cloners in GitHub's rolling 14-day window. Stars and forks remained zero. Treat this as evidence of repository access, not evidence that any short-video creative has retained viewers or spread on a content platform.

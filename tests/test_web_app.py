@@ -2,6 +2,7 @@ import json
 import threading
 import urllib.error
 import urllib.request
+import http.cookiejar
 from http.server import ThreadingHTTPServer
 
 import pytest
@@ -46,3 +47,40 @@ def test_api_rejects_empty_prompt(web_server):
     with pytest.raises(urllib.error.HTTPError) as exc:
         urllib.request.urlopen(request)
     assert exc.value.code == 400
+
+
+def test_provider_catalog_and_temporary_connection(web_server):
+    cookie_jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
+    with opener.open(f"{web_server}/api/providers") as response:
+        catalog = json.load(response)
+    assert catalog["secure_context"] is True
+    assert {item["id"] for item in catalog["providers"]} >= {"minimax", "runway", "kling", "seedance"}
+
+    secret = "test-key-never-returned"
+    request = urllib.request.Request(
+        f"{web_server}/api/connections/minimax",
+        data=json.dumps({"api_key": secret}).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    with opener.open(request) as response:
+        connected = json.load(response)
+    assert connected["connected"] is True
+    assert secret not in json.dumps(connected)
+
+    with opener.open(f"{web_server}/api/providers") as response:
+        assert "minimax" in json.load(response)["connected"]
+    request = urllib.request.Request(f"{web_server}/api/connections/minimax", method="DELETE")
+    with opener.open(request) as response:
+        assert json.load(response)["connected"] is False
+
+
+def test_public_http_rejects_api_keys(web_server):
+    request = urllib.request.Request(
+        f"{web_server}/api/connections/minimax",
+        data=json.dumps({"api_key": "test-key-never-stored"}).encode(),
+        headers={"Content-Type": "application/json", "Host": "43.138.0.110"},
+    )
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        urllib.request.urlopen(request)
+    assert exc.value.code == 426

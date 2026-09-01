@@ -3,6 +3,7 @@ const workspace = document.querySelector('#workspace');
 const toast = document.querySelector('#toast');
 let currentPack = null;
 let providerState = {providers: [], connected: [], secure_context: false};
+let selectedProvider = 'minimax';
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
 
@@ -28,9 +29,10 @@ function render(pack) {
     <article class="prompt-card">${copyButton(text)}<span>图像提示词</span><h3>${visualLabels[key] || key}</h3><p>${escapeHtml(text)}</p></article>`).join('')}</div>`;
 
   const shot = pack.video_shots[0];
-  document.querySelector('#tab-video').innerHTML = `<div class="video-result"><div class="result-player"><video controls muted loop playsinline poster="/demo/mao-first-frame.png"><source src="/demo/mao-lai-svd-captioned.mp4" type="video/mp4"></video><p>当前播放的是本地 SVD 验证样片，不是本次输入即时生成的成片。</p></div><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
+  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">生成视频</span><h3 id="generation-title">选择模型并使用对应账户额度</h3><p id="generation-account-note">选择 MiniMax 将使用你的 MiniMax 账户额度。</p></div><label class="model-select">视频模型<select id="video-provider"><option value="minimax">MiniMax H3</option><option value="runway">Runway</option><option value="kling">可灵</option><option value="seedance">Seedance</option><option value="local-svd">本地 SVD</option></select></label><div id="generation-action"></div></section><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
     <div><dt>镜头</dt><dd>${escapeHtml(shot.camera)}</dd></div><div><dt>台词</dt><dd>${escapeHtml(shot.voiceover)}</dd></div><div><dt>避免</dt><dd>${escapeHtml(shot.negative_prompt)}</dd></div>
-  </dl></aside></div></div><div class="generation-bar"><div><strong>下一步生成成片</strong><span>选择并连接模型平台后，可在本站提交异步视频任务。</span></div><button class="secondary" type="button" data-open-connections>选择模型</button></div>`;
+  </dl></aside></div><div class="result-player"><video controls muted loop playsinline poster="/demo/mao-first-frame.png"><source src="/demo/mao-lai-svd-captioned.mp4" type="video/mp4"></video><p><strong>参考样片</strong><br>当前播放的是本地 SVD 验证样片，不是本次输入即时生成的成片。</p></div></div>`;
+  loadProviders().then(updateGenerationStudio).catch(error => notify(error.message));
 
   const copy = pack.publishing_copy;
   document.querySelector('#tab-publish').innerHTML = `<div class="publish-grid">
@@ -113,6 +115,27 @@ async function loadProviders() {
   }).join('');
 }
 
+function updateGenerationStudio() {
+  const select = document.querySelector('#video-provider');
+  const action = document.querySelector('#generation-action');
+  if (!select || !action) return;
+  select.value = selectedProvider;
+  const item = providerState.providers.find(provider => provider.id === selectedProvider);
+  if (!item) return;
+  const connected = providerState.connected.includes(item.id);
+  const note = document.querySelector('#generation-account-note');
+  note.textContent = item.connection === 'local' ? '本地模式不消耗第三方平台额度，当前服务器仅提供已验证样片。' : `选择 ${item.name} 将使用你的 ${item.name} 账户额度，Open NiuLai 不代充值。`;
+  if (item.connection === 'api_key') {
+    if (!providerState.secure_context) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>配置 HTTPS 后连接</span><b>→</b></button>';
+    else if (!connected) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>连接账户</span><b>→</b></button>';
+    else action.innerHTML = '<button class="primary" type="button" data-submit-video><span>确认费用并生成</span><b>→</b></button>';
+  } else if (item.connection === 'external') {
+    action.innerHTML = `<a class="primary generation-link" href="${item.account_url}" target="_blank" rel="noreferrer"><span>前往 ${escapeHtml(item.name)} 生成</span><b>↗</b></a>`;
+  } else {
+    action.innerHTML = '<button class="secondary" type="button" data-view-sample>查看参考样片</button>';
+  }
+}
+
 async function openConnections() {
   try { await loadProviders(); dialog.showModal(); } catch (error) { notify(error.message); }
 }
@@ -120,6 +143,15 @@ async function openConnections() {
 document.querySelector('#connections-open').addEventListener('click', openConnections);
 document.querySelector('#connections-close').addEventListener('click', () => dialog.close());
 document.addEventListener('click', event => { if (event.target.closest('[data-open-connections]')) openConnections(); });
+document.addEventListener('change', event => {
+  if (event.target.id !== 'video-provider') return;
+  selectedProvider = event.target.value;
+  updateGenerationStudio();
+});
+document.addEventListener('click', event => {
+  if (event.target.closest('[data-view-sample]')) document.querySelector('.result-player')?.scrollIntoView({behavior:'smooth', block:'center'});
+  if (event.target.closest('[data-submit-video]')) notify('账户已连接；下一阶段将接通该平台的异步生成任务。');
+});
 
 dialog.addEventListener('submit', async event => {
   const form = event.target.closest('.key-form');

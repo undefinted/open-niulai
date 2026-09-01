@@ -128,7 +128,7 @@ class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = unquote(urlparse(self.path).path)
         if path == "/api/health":
-            self.send_json({"ok": True, "version": "0.4.0", "mode": "creator"})
+            self.send_json({"ok": True, "version": "0.4.1", "mode": "creator"})
             return
         if path == "/api/providers":
             self.send_json({"providers": PROVIDERS, "secure_context": self.request_is_secure(), **self.connection_status(self.session_token())})

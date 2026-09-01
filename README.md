@@ -5,7 +5,7 @@
 
 > 万物皆可来。输入一个想法，得到一套能制作、能发布的原创《X来》短片方案。
 
-Open NiuLai 是一个 Codex Skill，也是一条面向 AI 短视频的内容生产工作流。它把一句 `猫来`、`甲方来` 或更完整的创意 prompt，扩写为剧本、角色设定、分镜、图片提示词、Runway/Kling/Seedance 视频提示词、字幕和发布文案。
+Open NiuLai 是一个 Codex Skill，也是一条面向 AI 短视频的内容生产工作流。它把一句 `猫来`、`甲方来` 或更完整的创意 prompt，扩写为剧本、角色设定、分镜、图片提示词、Runway/Kling/Seedance/MiniMax H3 视频提示词、字幕和发布文案。
 
 它不复刻《牛来》的角色、镜头或台词。项目提炼的是一种更通用的互联网创作语法：真诚、粗糙、低成本、反差强烈、适合二创。
 
@@ -69,6 +69,8 @@ python scripts/build_video_job.py --demo mao-lai --provider runway --duration 5 
 
 预览用于验证裁切、时长和字幕时间轴，不冒充 AI 视频成片；`video-job.json` 才是后续真实视频适配器的输入。
 
+MiniMax H3 作业包可通过 `--provider minimax-h3` 生成。该命令默认不提交付费任务，实际成片需要在仓库外安全配置 API 密钥并显式提交；当前演示视频仍如实标注为本地 SVD 生成。详见 [MiniMax H3 接入说明](docs/MINIMAX_H3.md)。
+
 `open-niulai generate-video --project <目录>` 默认只做不产生费用的 dry run。设置本地 `RUNWAYML_API_SECRET` 后，增加显式 `--submit` 才会提交真实生成任务；任务 ID 会立即落盘，超时重试默认恢复原任务，成片通过媒体检查后才进入完成状态。详见 [Runway 接入说明](docs/RUNWAY.md)。
 
 没有视频 API 凭据时，也可使用 [本地 SVD 后端](docs/LOCAL_VIDEO.md) 将首帧真正动画化。它需要约 8 GB 显存、较大的模型缓存，以及操作者明确接受第三方模型许可证；默认只做 dry run。
@@ -80,7 +82,7 @@ python scripts/build_video_job.py --demo mao-lai --provider runway --duration 5 
 - 原创标题、钩子、角色与世界设定
 - 5 秒、15 秒或 30 秒可执行脚本
 - 骗人海报、正片崩坏截图、角色参考、表情包提示词
-- Runway、Kling、Seedance 三套镜头提示词
+- Runway、Kling、Seedance、MiniMax H3 四套镜头提示词
 - 字幕、旁白、剪辑建议
 - 标题、封面字、首评问题和标签
 - `constraint_report`，明确列出用户要求是否进入产物

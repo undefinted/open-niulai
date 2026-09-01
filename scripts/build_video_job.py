@@ -17,7 +17,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 ROOT = Path(__file__).parents[1]
 DEFAULT_MANIFEST = ROOT / "examples" / "demo-manifest.json"
-PROVIDERS = ("runway", "kling", "seedance")
+PROVIDERS = ("runway", "kling", "seedance", "minimax-h3")
 
 
 @dataclass(frozen=True)
@@ -79,6 +79,10 @@ def build_job(data: VideoJobInput, manifest_path: Path = DEFAULT_MANIFEST) -> di
         "runway": "Use the supplied image as the first frame. Keep the prompt concise and motion-led. ",
         "kling": "Use the supplied image as the subject reference and first frame; lock face, silhouette, palette, and prop. ",
         "seedance": "Use the supplied first frame plus character reference when the interface supports multiple references; preserve continuity. ",
+        "minimax-h3": (
+            "Use the supplied image as the first frame for MiniMax H3 FL2VA. "
+            "Preserve the subject and environment while generating synchronized ambient audio. "
+        ),
     }
     subtitle = data.subtitle or {
         "jiafang-lai": "最后改一次。",
@@ -102,7 +106,13 @@ def build_job(data: VideoJobInput, manifest_path: Path = DEFAULT_MANIFEST) -> di
         "negative_prompt": "new subject, identity drift, extra limbs, readable generated text, logo, watermark, smooth cinematic animation",
         "submission": {
             "mode": "external_adapter_required",
-            "note": "Upload input_image through the selected provider adapter, submit prompt, then poll to a terminal state.",
+            "model": "MiniMax-H3" if data.provider == "minimax-h3" else None,
+            "note": (
+                "Use a pay-as-you-go MiniMax API key stored outside the repository, submit explicitly, "
+                "then poll and download the completed video."
+                if data.provider == "minimax-h3"
+                else "Upload input_image through the selected provider adapter, submit prompt, then poll to a terminal state."
+            ),
         },
     }
 

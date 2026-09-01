@@ -38,3 +38,11 @@ def test_job_paths_are_repository_relative():
     job = MODULE.build_job(MODULE.VideoJobInput("code-lai", "runway"))
     assert not Path(job["input_image"]).is_absolute()
     assert job["input_image"].startswith("assets/demo/")
+
+
+def test_minimax_h3_job_is_explicit_and_provider_ready():
+    job = MODULE.build_job(MODULE.VideoJobInput("mao-lai", "minimax-h3"))
+    assert job["provider"] == "minimax-h3"
+    assert job["submission"]["model"] == "MiniMax-H3"
+    assert "H3 FL2VA" in job["prompt"]
+    assert "pay-as-you-go" in job["submission"]["note"]

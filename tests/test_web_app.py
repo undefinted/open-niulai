@@ -41,6 +41,12 @@ def test_health_and_pack_api(web_server):
         assert json.load(response)["pack"]["title"] == "《代码来》"
 
 
+def test_head_health_for_load_balancer(web_server):
+    request = urllib.request.Request(f"{web_server}/api/health", method="HEAD")
+    with urllib.request.urlopen(request) as response:
+        assert response.status == 200
+
+
 def test_api_rejects_empty_prompt(web_server):
     body = json.dumps({"subject": "猫", "prompt": ""}).encode()
     request = urllib.request.Request(f"{web_server}/api/packs", data=body, headers={"Content-Type": "application/json"})
@@ -84,3 +90,34 @@ def test_public_http_rejects_api_keys(web_server):
     with pytest.raises(urllib.error.HTTPError) as exc:
         urllib.request.urlopen(request)
     assert exc.value.code == 426
+
+
+def test_paid_video_job_requires_confirmation(web_server):
+    body = json.dumps({"provider": "minimax", "prompt": "A cat.", "confirm_paid": False}).encode()
+    request = urllib.request.Request(f"{web_server}/api/video-jobs", data=body, headers={"Content-Type": "application/json"})
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        urllib.request.urlopen(request)
+    assert exc.value.code == 400
+
+
+def test_minimax_job_is_created_once_and_owned_by_session(web_server, monkeypatch):
+    monkeypatch.setattr("scripts.web_app.minimax_h3_adapter.create_task", lambda *args: "provider-task-1")
+    cookie_jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
+    connection = urllib.request.Request(
+        f"{web_server}/api/connections/minimax",
+        data=json.dumps({"api_key": "test-key-never-returned", "region": "cn"}).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    opener.open(connection).close()
+    request = urllib.request.Request(
+        f"{web_server}/api/video-jobs",
+        data=json.dumps({"provider": "minimax", "prompt": "A cat.", "duration": 5, "ratio": "16:9", "confirm_paid": True}).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    with opener.open(request) as response:
+        result = json.load(response)
+    assert result["job"]["status"] == "queued"
+    assert "provider_task_id" not in result["job"]
+    with opener.open(f"{web_server}/api/video-jobs/{result['job']['id']}") as response:
+        assert json.load(response)["job"]["model"] == "MiniMax-H3"

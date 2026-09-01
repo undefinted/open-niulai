@@ -16,15 +16,19 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from scripts.build_open_niulai_pack import PackInput, TEMPLATES, build_pack
+from scripts import minimax_h3_adapter
 
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB_ROOT = ROOT / "web"
 ASSET_ROOT = ROOT / "assets" / "demo"
+GENERATED_ROOT = ROOT / "generated"
 MAX_BODY_BYTES = 64 * 1024
 SESSION_TTL_SECONDS = 4 * 60 * 60
 SESSIONS: dict[str, dict] = {}
 SESSIONS_LOCK = threading.Lock()
+VIDEO_JOBS: dict[str, dict] = {}
+VIDEO_JOBS_LOCK = threading.Lock()
 PROVIDERS = [
     {"id": "minimax", "name": "MiniMax H3", "connection": "api_key", "status": "available", "account_url": "https://platform.minimaxi.com/"},
     {"id": "runway", "name": "Runway", "connection": "api_key", "status": "available", "account_url": "https://app.runwayml.com/"},
@@ -46,6 +50,36 @@ def cleanup_sessions() -> None:
     with SESSIONS_LOCK:
         for token in [key for key, value in SESSIONS.items() if value["updated_at"] < cutoff]:
             del SESSIONS[token]
+
+
+def public_job(job: dict) -> dict:
+    return {key: value for key, value in job.items() if key not in {"session_token", "provider_task_id"}}
+
+
+def monitor_minimax_job(job_id: str, api_key: str, region: str, task_id: str) -> None:
+    try:
+        for _ in range(180):
+            time.sleep(10)
+            result = minimax_h3_adapter.query_task(api_key, region, task_id)
+            status = result["status"]
+            with VIDEO_JOBS_LOCK:
+                VIDEO_JOBS[job_id]["status"] = status
+                VIDEO_JOBS[job_id]["updated_at"] = int(time.time())
+            if status == "succeeded":
+                if not result.get("video_url"):
+                    raise minimax_h3_adapter.MiniMaxH3Error("任务成功但未返回视频地址。")
+                destination = GENERATED_ROOT / f"{job_id}.mp4"
+                minimax_h3_adapter.download_video(result["video_url"], destination)
+                with VIDEO_JOBS_LOCK:
+                    VIDEO_JOBS[job_id].update({"status": "succeeded", "video_url": f"/generated/{job_id}.mp4", "updated_at": int(time.time())})
+                return
+            if status in minimax_h3_adapter.TERMINAL:
+                return
+        with VIDEO_JOBS_LOCK:
+            VIDEO_JOBS[job_id].update({"status": "timeout", "error": "查询已暂停，供应商任务可能仍在运行。", "updated_at": int(time.time())})
+    except minimax_h3_adapter.MiniMaxH3Error as exc:
+        with VIDEO_JOBS_LOCK:
+            VIDEO_JOBS[job_id].update({"status": "failed", "error": str(exc), "updated_at": int(time.time())})
 
 
 def create_pack(payload: dict) -> dict:
@@ -75,7 +109,7 @@ def create_pack(payload: dict) -> dict:
 
 
 class AppHandler(BaseHTTPRequestHandler):
-    server_version = "OpenNiuLai/0.3"
+    server_version = "OpenNiuLai/0.5"
 
     def log_message(self, format: str, *args: object) -> None:
         print(f"{self.address_string()} - {format % args}")
@@ -125,13 +159,47 @@ class AppHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def do_HEAD(self) -> None:  # noqa: N802
+        if urlparse(self.path).path != "/api/health":
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+
     def do_GET(self) -> None:  # noqa: N802
         path = unquote(urlparse(self.path).path)
         if path == "/api/health":
-            self.send_json({"ok": True, "version": "0.4.1", "mode": "creator"})
+            self.send_json({"ok": True, "version": "0.5.0", "mode": "creator"})
             return
         if path == "/api/providers":
             self.send_json({"providers": PROVIDERS, "secure_context": self.request_is_secure(), **self.connection_status(self.session_token())})
+            return
+        if path.startswith("/api/video-jobs/"):
+            job_id = path.removeprefix("/api/video-jobs/").strip("/")
+            token = self.session_token()
+            with VIDEO_JOBS_LOCK:
+                job = VIDEO_JOBS.get(job_id)
+                if not job or job.get("session_token") != token:
+                    self.send_json({"error": "找不到该视频任务。"}, HTTPStatus.NOT_FOUND)
+                    return
+                result = public_job(job)
+            self.send_json({"job": result})
+            return
+        if path.startswith("/generated/"):
+            name = path.removeprefix("/generated/")
+            if not name.endswith(".mp4") or Path(name).name != name:
+                self.send_error(HTTPStatus.FORBIDDEN)
+                return
+            job_id = name.removesuffix(".mp4")
+            token = self.session_token()
+            with VIDEO_JOBS_LOCK:
+                job = VIDEO_JOBS.get(job_id)
+                if not job or job.get("session_token") != token or job.get("status") != "succeeded":
+                    self.send_error(HTTPStatus.NOT_FOUND)
+                    return
+            self.send_file(GENERATED_ROOT / name, cache=False)
             return
         if path.startswith("/demo/"):
             target = (ASSET_ROOT / path.removeprefix("/demo/")).resolve()
@@ -165,7 +233,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 token = self.session_token(create=True)
                 with SESSIONS_LOCK:
                     session = SESSIONS.setdefault(token, {"connections": {}, "updated_at": time.time()})
-                    session["connections"][provider_id] = api_key
+                    session["connections"][provider_id] = {"api_key": api_key, "region": str(payload.get("region", "cn")) if provider_id == "minimax" else "global"}
                     session["updated_at"] = time.time()
                 body = json.dumps({"connected": True, "provider": provider_id, "expires_in_seconds": SESSION_TTL_SECONDS}, ensure_ascii=False).encode("utf-8")
                 self.send_response(HTTPStatus.OK)
@@ -176,6 +244,39 @@ class AppHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(body)
             except (ValueError, TypeError, json.JSONDecodeError) as exc:
+                self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+        if path == "/api/video-jobs":
+            try:
+                if not self.request_is_secure():
+                    self.send_json({"error": "视频生成需要 HTTPS。"}, HTTPStatus.UPGRADE_REQUIRED)
+                    return
+                payload = self.read_payload()
+                if payload.get("confirm_paid") is not True:
+                    raise ValueError("提交付费任务前必须明确确认费用。")
+                provider_id = str(payload.get("provider", ""))
+                if provider_id != "minimax":
+                    self.send_json({"error": "当前站内真实生成首先支持 MiniMax H3；其他模型请使用平台跳转。"}, HTTPStatus.NOT_IMPLEMENTED)
+                    return
+                token = self.session_token()
+                with SESSIONS_LOCK:
+                    connection = SESSIONS.get(token, {}).get("connections", {}).get(provider_id) if token else None
+                if not connection:
+                    self.send_json({"error": "请先连接 MiniMax 账户。"}, HTTPStatus.UNAUTHORIZED)
+                    return
+                prompt = str(payload.get("prompt", "")).strip()
+                duration = int(payload.get("duration", 10))
+                duration = max(4, min(15, duration))
+                ratio = str(payload.get("ratio", "16:9"))
+                task_id = minimax_h3_adapter.create_task(connection["api_key"], connection["region"], prompt, duration, ratio)
+                job_id = secrets.token_urlsafe(16)
+                now = int(time.time())
+                job = {"id": job_id, "provider": "minimax", "model": "MiniMax-H3", "status": "queued", "duration": duration, "ratio": ratio, "created_at": now, "updated_at": now, "session_token": token, "provider_task_id": task_id}
+                with VIDEO_JOBS_LOCK:
+                    VIDEO_JOBS[job_id] = job
+                threading.Thread(target=monitor_minimax_job, args=(job_id, connection["api_key"], connection["region"], task_id), daemon=True).start()
+                self.send_json({"job": public_job(job)}, HTTPStatus.ACCEPTED)
+            except (ValueError, TypeError, json.JSONDecodeError, minimax_h3_adapter.MiniMaxH3Error) as exc:
                 self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
             return
         if path != "/api/packs":

@@ -1,0 +1,9 @@
+{
+  "name": "open-niulai-pages",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-pages.mjs",
+    "test:pages": "node --test tests/pages-functions.test.mjs"
+  }
+}

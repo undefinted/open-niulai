@@ -5,6 +5,17 @@ let currentPack = null;
 let providerState = {providers: [], connected: [], secure_context: false};
 let selectedProvider = 'minimax';
 let firstFrameDataUrl = null;
+const connectionKey = provider => `open-niulai:${provider}:connection`;
+
+function getConnection(provider) {
+  try { return JSON.parse(sessionStorage.getItem(connectionKey(provider)) || 'null'); }
+  catch { return null; }
+}
+
+function providerHeaders(provider) {
+  const connection = getConnection(provider);
+  return connection ? {'X-Provider-Key': connection.api_key, 'X-Provider-Region': connection.region || 'cn'} : {};
+}
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
 
@@ -105,6 +116,7 @@ const dialog = document.querySelector('#connections-dialog');
 async function loadProviders() {
   const response = await fetch('/api/providers');
   providerState = await response.json();
+  providerState.connected = providerState.providers.filter(item => getConnection(item.id)).map(item => item.id);
   const notice = document.querySelector('#security-notice');
   notice.classList.toggle('hidden', providerState.secure_context);
   notice.textContent = providerState.secure_context ? '' : '当前站点使用 HTTP，为防止凭证泄露，API Key 连接已禁用。配置 HTTPS 后自动开放。';
@@ -175,19 +187,19 @@ dialog.addEventListener('submit', async event => {
   const apiKey = formData.get('api_key');
   form.querySelector('button').disabled = true;
   try {
-    const response = await fetch(`/api/connections/${form.dataset.provider}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({api_key:apiKey, region:formData.get('region') || 'global'})});
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || '连接失败');
+    if (!apiKey || apiKey.length < 12) throw new Error('API Key 格式无效');
+    sessionStorage.setItem(connectionKey(form.dataset.provider), JSON.stringify({api_key:apiKey, region:formData.get('region') || 'cn'}));
     form.reset();
     await loadProviders();
-    notify('模型账户已临时连接');
+    notify('模型账户已连接，仅保留在当前标签页');
   } catch (error) { notify(error.message); }
+  finally { form.querySelector('button').disabled = false; }
 });
 
 dialog.addEventListener('click', async event => {
   const button = event.target.closest('[data-disconnect]');
   if (!button) return;
-  await fetch(`/api/connections/${button.dataset.disconnect}`, {method:'DELETE'});
+  sessionStorage.removeItem(connectionKey(button.dataset.disconnect));
   await loadProviders();
   notify('连接已断开');
 });
@@ -203,7 +215,7 @@ async function submitVideo() {
   try {
     const shot = currentPack.video_shots[0];
     const requested = Number(currentPack.constraint_report.duration_seconds || 10);
-    const response = await fetch('/api/video-jobs', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({provider:'minimax', prompt:shot.motion_prompt, duration:Math.max(4,Math.min(15,requested)), ratio:'16:9', first_frame_image:firstFrameDataUrl, confirm_paid:true})});
+    const response = await fetch('/api/video-jobs', {method:'POST', headers:{'Content-Type':'application/json', ...providerHeaders('minimax')}, body:JSON.stringify({provider:'minimax', prompt:shot.motion_prompt, duration:Math.max(4,Math.min(15,requested)), ratio:'16:9', first_frame_image:firstFrameDataUrl, confirm_paid:true})});
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || '任务提交失败');
     showJob(result.job);
@@ -227,7 +239,7 @@ function showJob(job) {
 function pollJob(jobId) {
   const timer = setInterval(async () => {
     try {
-      const response = await fetch(`/api/video-jobs/${jobId}`);
+      const response = await fetch(`/api/video-jobs/${encodeURIComponent(jobId)}`, {headers:providerHeaders('minimax')});
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '查询失败');
       showJob(result.job);

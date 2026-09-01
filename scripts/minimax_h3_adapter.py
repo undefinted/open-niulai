@@ -17,7 +17,7 @@ class MiniMaxH3Error(RuntimeError):
     pass
 
 
-def build_payload(prompt: str, duration: int = 10, ratio: str = "16:9") -> dict:
+def build_payload(prompt: str, duration: int = 10, ratio: str = "16:9", first_frame_image: str | None = None) -> dict:
     prompt = prompt.strip()
     if not prompt or len(prompt) > 7000:
         raise MiniMaxH3Error("H3 视频提示词长度必须为 1-7000 个字符。")
@@ -25,9 +25,15 @@ def build_payload(prompt: str, duration: int = 10, ratio: str = "16:9") -> dict:
         raise MiniMaxH3Error("H3 视频时长必须为 4-15 秒整数。")
     if ratio not in {"adaptive", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"}:
         raise MiniMaxH3Error("H3 视频比例无效。")
+    content = [{"type": "text", "text": prompt}]
+    if first_frame_image:
+        if not first_frame_image.startswith(("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")):
+            raise MiniMaxH3Error("首帧必须是 JPG、PNG 或 WebP 图片。")
+        content.append({"type": "image_url", "image_url": {"url": first_frame_image}, "role": "first_frame"})
+        ratio = "adaptive"
     return {
         "model": "MiniMax-H3",
-        "content": [{"type": "text", "text": prompt}],
+        "content": content,
         "resolution": "2K",
         "duration": duration,
         "ratio": ratio,
@@ -58,8 +64,8 @@ def api_json(method: str, path: str, api_key: str, region: str, body: dict | Non
     return result
 
 
-def create_task(api_key: str, region: str, prompt: str, duration: int, ratio: str) -> str:
-    result = api_json("POST", "/v2/video_generation", api_key, region, build_payload(prompt, duration, ratio))
+def create_task(api_key: str, region: str, prompt: str, duration: int, ratio: str, first_frame_image: str | None = None) -> str:
+    result = api_json("POST", "/v2/video_generation", api_key, region, build_payload(prompt, duration, ratio, first_frame_image))
     task_id = result.get("task_id")
     if not task_id:
         raise MiniMaxH3Error("MiniMax 响应未返回任务 ID，未自动重试以避免重复扣费。")

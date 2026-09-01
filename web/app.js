@@ -4,6 +4,7 @@ const toast = document.querySelector('#toast');
 let currentPack = null;
 let providerState = {providers: [], connected: [], secure_context: false};
 let selectedProvider = 'minimax';
+let firstFrameDataUrl = null;
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
 
@@ -29,7 +30,7 @@ function render(pack) {
     <article class="prompt-card">${copyButton(text)}<span>图像提示词</span><h3>${visualLabels[key] || key}</h3><p>${escapeHtml(text)}</p></article>`).join('')}</div>`;
 
   const shot = pack.video_shots[0];
-  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">生成视频</span><h3 id="generation-title">选择模型并使用对应账户额度</h3><p id="generation-account-note">选择 MiniMax 将使用你的 MiniMax 账户额度。</p></div><label class="model-select">视频模型<select id="video-provider"><option value="minimax">MiniMax H3</option><option value="runway">Runway</option><option value="kling">可灵</option><option value="seedance">Seedance</option><option value="local-svd">本地 SVD</option></select></label><div id="generation-action"></div><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
+  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 内容已就绪</span><h3 id="generation-title">直接从这里生成视频</h3><p id="generation-account-note">选择 MiniMax 将使用你的 MiniMax 账户额度。</p></div><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">未上传首帧：文本直出</b></label><label class="model-select"><span>第 3 步 · 视频模型</span><select id="video-provider"><option value="minimax">MiniMax H3</option><option value="runway">Runway</option><option value="kling">可灵</option><option value="seedance">Seedance</option><option value="local-svd">本地 SVD</option></select></label><div id="generation-action"></div><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>怎么选？</strong><span>文本直出适合快速试错，但角色外观不稳定；上传一张确认过的首帧再生成，更容易保持角色和构图。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
     <div><dt>镜头</dt><dd>${escapeHtml(shot.camera)}</dd></div><div><dt>台词</dt><dd>${escapeHtml(shot.voiceover)}</dd></div><div><dt>避免</dt><dd>${escapeHtml(shot.negative_prompt)}</dd></div>
   </dl></aside></div><div class="result-player"><video controls muted loop playsinline poster="/demo/mao-first-frame.png"><source src="/demo/mao-lai-svd-captioned.mp4" type="video/mp4"></video><p><strong>参考样片</strong><br>当前播放的是本地 SVD 验证样片，不是本次输入即时生成的成片。</p></div></div>`;
   loadProviders().then(updateGenerationStudio).catch(error => notify(error.message));
@@ -41,7 +42,10 @@ function render(pack) {
     <article class="publish-card"><span>首评与标签</span><h3>${escapeHtml(copy.first_comment)}</h3><p>${copy.hashtags.map(escapeHtml).join(' ')}</p>${copyButton(`${copy.first_comment}\n${copy.hashtags.join(' ')}`)}</article>
   </div>`;
   workspace.classList.remove('hidden');
-  workspace.scrollIntoView({behavior: 'smooth', block: 'start'});
+  document.querySelectorAll('.tabs button, .tab-view').forEach(node => node.classList.remove('active'));
+  document.querySelector('[data-tab="video"]').classList.add('active');
+  document.querySelector('#tab-video').classList.add('active');
+  requestAnimationFrame(() => document.querySelector('.generation-studio').scrollIntoView({behavior:'smooth', block:'start'}));
 }
 
 form.addEventListener('submit', async event => {
@@ -145,9 +149,18 @@ document.querySelector('#connections-open').addEventListener('click', openConnec
 document.querySelector('#connections-close').addEventListener('click', () => dialog.close());
 document.addEventListener('click', event => { if (event.target.closest('[data-open-connections]')) openConnections(); });
 document.addEventListener('change', event => {
-  if (event.target.id !== 'video-provider') return;
-  selectedProvider = event.target.value;
-  updateGenerationStudio();
+  if (event.target.id === 'video-provider') {
+    selectedProvider = event.target.value;
+    updateGenerationStudio();
+  }
+  if (event.target.id === 'first-frame') {
+    const file = event.target.files[0];
+    if (!file) { firstFrameDataUrl = null; return; }
+    if (file.size > 10 * 1024 * 1024) { notify('首帧图片不能超过 10 MB'); event.target.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = () => { firstFrameDataUrl = reader.result; document.querySelector('#frame-name').textContent = `${file.name} · 首帧引导`; };
+    reader.readAsDataURL(file);
+  }
 });
 document.addEventListener('click', event => {
   if (event.target.closest('[data-view-sample]')) document.querySelector('.result-player')?.scrollIntoView({behavior:'smooth', block:'center'});
@@ -190,7 +203,7 @@ async function submitVideo() {
   try {
     const shot = currentPack.video_shots[0];
     const requested = Number(currentPack.constraint_report.duration_seconds || 10);
-    const response = await fetch('/api/video-jobs', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({provider:'minimax', prompt:shot.motion_prompt, duration:Math.max(4,Math.min(15,requested)), ratio:'16:9', confirm_paid:true})});
+    const response = await fetch('/api/video-jobs', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({provider:'minimax', prompt:shot.motion_prompt, duration:Math.max(4,Math.min(15,requested)), ratio:'16:9', first_frame_image:firstFrameDataUrl, confirm_paid:true})});
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || '任务提交失败');
     showJob(result.job);
@@ -205,7 +218,7 @@ function showJob(job) {
   const status = document.querySelector('#video-job-status');
   const labels = {queued:'排队中',running:'生成中',succeeded:'生成完成',failed:'生成失败',cancelled:'已取消',expired:'已过期',timeout:'查询暂停'};
   status.classList.remove('hidden');
-  status.innerHTML = `<strong>${labels[job.status] || escapeHtml(job.status)}</strong><span>${job.error ? escapeHtml(job.error) : `MiniMax H3 · ${job.duration} 秒 · ${job.ratio}`}</span>`;
+  status.innerHTML = `<strong>${labels[job.status] || escapeHtml(job.status)}</strong><span>${job.error ? escapeHtml(job.error) : `MiniMax H3 · ${job.duration} 秒 · ${job.ratio} · ${job.input_mode === 'first_frame' ? '首帧引导' : '文本直出'}`}</span>`;
   if (job.video_url) {
     document.querySelector('.result-player').innerHTML = `<video controls autoplay playsinline><source src="${job.video_url}" type="video/mp4"></video><p><strong>本次生成结果</strong><br>视频已从 MiniMax 下载到 Open NiuLai，可直接播放或下载。</p><a class="secondary action-link" href="${job.video_url}" download>下载 MP4</a>`;
   }

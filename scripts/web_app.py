@@ -134,9 +134,9 @@ class AppHandler(BaseHTTPRequestHandler):
             return token
         return secrets.token_urlsafe(32)
 
-    def read_payload(self) -> dict:
+    def read_payload(self, max_bytes: int = MAX_BODY_BYTES) -> dict:
         length = int(self.headers.get("Content-Length", "0"))
-        if length <= 0 or length > MAX_BODY_BYTES:
+        if length <= 0 or length > max_bytes:
             raise ValueError("请求内容为空或过大。")
         return json.loads(self.rfile.read(length).decode("utf-8"))
 
@@ -171,7 +171,7 @@ class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = unquote(urlparse(self.path).path)
         if path == "/api/health":
-            self.send_json({"ok": True, "version": "0.5.0", "mode": "creator"})
+            self.send_json({"ok": True, "version": "0.5.1", "mode": "creator"})
             return
         if path == "/api/providers":
             self.send_json({"providers": PROVIDERS, "secure_context": self.request_is_secure(), **self.connection_status(self.session_token())})
@@ -251,7 +251,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 if not self.request_is_secure():
                     self.send_json({"error": "视频生成需要 HTTPS。"}, HTTPStatus.UPGRADE_REQUIRED)
                     return
-                payload = self.read_payload()
+                payload = self.read_payload(16 * 1024 * 1024)
                 if payload.get("confirm_paid") is not True:
                     raise ValueError("提交付费任务前必须明确确认费用。")
                 provider_id = str(payload.get("provider", ""))
@@ -268,10 +268,11 @@ class AppHandler(BaseHTTPRequestHandler):
                 duration = int(payload.get("duration", 10))
                 duration = max(4, min(15, duration))
                 ratio = str(payload.get("ratio", "16:9"))
-                task_id = minimax_h3_adapter.create_task(connection["api_key"], connection["region"], prompt, duration, ratio)
+                first_frame = str(payload.get("first_frame_image", "")) or None
+                task_id = minimax_h3_adapter.create_task(connection["api_key"], connection["region"], prompt, duration, ratio, first_frame)
                 job_id = secrets.token_urlsafe(16)
                 now = int(time.time())
-                job = {"id": job_id, "provider": "minimax", "model": "MiniMax-H3", "status": "queued", "duration": duration, "ratio": ratio, "created_at": now, "updated_at": now, "session_token": token, "provider_task_id": task_id}
+                job = {"id": job_id, "provider": "minimax", "model": "MiniMax-H3", "status": "queued", "duration": duration, "ratio": "adaptive" if first_frame else ratio, "input_mode": "first_frame" if first_frame else "text", "created_at": now, "updated_at": now, "session_token": token, "provider_task_id": task_id}
                 with VIDEO_JOBS_LOCK:
                     VIDEO_JOBS[job_id] = job
                 threading.Thread(target=monitor_minimax_job, args=(job_id, connection["api_key"], connection["region"], task_id), daemon=True).start()

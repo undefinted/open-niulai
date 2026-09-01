@@ -14,6 +14,13 @@ def test_h3_payload_matches_official_v2_shape():
     }
 
 
+def test_h3_first_frame_uses_official_content_role_and_adaptive_ratio():
+    image = "data:image/png;base64,aGVsbG8="
+    payload = adapter.build_payload("Keep this character stable.", 5, "16:9", image)
+    assert payload["content"][1] == {"type": "image_url", "image_url": {"url": image}, "role": "first_frame"}
+    assert payload["ratio"] == "adaptive"
+
+
 @pytest.mark.parametrize("duration", [3, 16])
 def test_h3_rejects_invalid_duration(duration):
     with pytest.raises(adapter.MiniMaxH3Error, match="4-15"):

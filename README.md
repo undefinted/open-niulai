@@ -13,13 +13,13 @@
 
 在线服务部署在腾讯云按量计费实验环境中，实验结束或云服务器停机时可能暂时无法访问。
 
-网页端包含统一模型连接中心。Cloudflare Pages 正式站点通过同源 Pages Functions 提交和查询 MiniMax H3 与 RunningHub 工作流任务；用户凭证仅保存在当前浏览器标签页的 `sessionStorage` 中，不写入应用数据库、服务器磁盘或 GitHub。可灵、Runway 与 Seedance 当前提供制作包导出和平台跳转。
+网页端统一使用 RunningHub 生成账户。MiniMax H3、Seedance 和自定义视频能力以 RunningHub 工作流预设呈现，Cloudflare Pages 正式站点通过同源 Pages Functions 上传素材、提交任务并查询结果。用户凭证和工作流绑定仅保存在当前浏览器标签页的 `sessionStorage` 中，不写入应用数据库、服务器磁盘或 GitHub。
 
-MiniMax H3 已接通站内付费任务闭环：用户连接自己的按量付费 Key，明确确认一次费用后，服务创建一个 H3 V2 任务、每 10 秒查询同一任务，成功后在结果页播放供应商返回的 MP4。未配置 HTTPS、未连接账户或未确认费用时均不会提交任务。
+用户连接一次 RunningHub API Key 后，可分别绑定自己的 MiniMax H3、Seedance 或其他工作流。每次生成前都需明确确认费用，服务随后创建任务、查询状态并在结果页播放工作流返回的视频。未配置 HTTPS、未连接账户、未完成工作流绑定或未确认费用时均不会提交任务。MiniMax 官方 API 适配器仅作为后端兼容能力保留，不再出现在默认界面中。
 
 Cloudflare Pages 的构建参数、域名接入和安全边界见 [部署说明](docs/CLOUDFLARE_PAGES.md)。
 
-RunningHub 作为高级工作流模式：用户填写自己的工作流 ID、提示词节点 ID，并可将首帧上传后映射到图片节点。平台提交 `nodeInfoList` 后持续查询输出，优先播放工作流返回的视频文件。使用方法与节点映射见 [RunningHub 接入说明](docs/RUNNINGHUB.md)。
+用户第一次选择某个预设时填写工作流 ID 与节点映射，之后当前会话会记住该预设的绑定。平台提交 `nodeInfoList` 后持续查询输出，并播放工作流返回的视频文件。使用方法与节点映射见 [RunningHub 接入说明](docs/RUNNINGHUB.md)。
 
 生成制作方案后，网页会自动进入“视频”页签和生成台。用户可以选择文本直出，也可以上传一张确认过的 JPG、PNG 或 WebP 首帧进行 H3 首帧引导；文本直出适合快速试错，首帧引导更适合保持角色与构图。仓库中的 SVD 视频只是一次可验证样片，不代表任意输入都能复现相同效果。
 

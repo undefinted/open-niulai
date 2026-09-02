@@ -292,7 +292,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     task_id, task_status = runninghub_adapter.create_task(api_key, payload)
                     job_id = secrets.token_urlsafe(16)
                     now = int(time.time())
-                    job = {"id": job_id, "provider": "runninghub", "model": "RunningHub Workflow", "status": task_status, "workflow_id": str(payload.get("workflow_id")), "input_mode": "first_frame" if payload.get("uploaded_file_name") else "text", "created_at": now, "updated_at": now, "session_token": token, "provider_task_id": task_id}
+                    job = {"id": job_id, "provider": "runninghub", "model": "RunningHub Workflow", "status": task_status, "workflow_id": str(payload.get("workflow_id")), "workflow_preset": str(payload.get("workflow_preset", "custom")), "input_mode": "first_frame" if payload.get("uploaded_file_name") else "text", "created_at": now, "updated_at": now, "session_token": token, "provider_task_id": task_id}
                     with VIDEO_JOBS_LOCK:
                         VIDEO_JOBS[job_id] = job
                     self.send_json({"job": public_job(job)}, HTTPStatus.ACCEPTED)

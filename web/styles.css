@@ -84,7 +84,12 @@ h2 { margin: 0 0 8px; font-size: 30px; line-height: 1.2; }
 .frame-upload b { min-height: 42px; display: flex; align-items: center; padding: 0 10px; overflow: hidden; border: 1px dashed #a99b72; border-radius: 4px; background: white; color: #5d5642; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .frame-upload b:hover { border-color: var(--coral); color: var(--coral-dark); }
 .generation-link { min-height: 42px; color: white; text-decoration: none; }
-.advanced-workflow { grid-column: 1 / -1; display: grid; grid-template-columns: 1.25fr repeat(3,minmax(130px,1fr)); gap: 12px; align-items: end; padding-top: 16px; border-top: 1px solid #e2d6ad; }
+.workflow-summary { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; column-gap: 9px; align-items: baseline; padding: 12px 14px; border-left: 3px solid var(--coral); background: white; }
+.workflow-summary strong { font-size: 14px; }
+.workflow-summary p { grid-column: 1 / -1; margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.workflow-config { grid-column: 1 / -1; border-top: 1px solid #e2d6ad; }
+.workflow-config summary { padding: 13px 0 0; color: #62583d; font-size: 12px; font-weight: 800; cursor: pointer; }
+.advanced-workflow { display: grid; grid-template-columns: 1.25fr repeat(3,minmax(130px,1fr)); gap: 12px; align-items: end; padding-top: 14px; }
 .advanced-workflow > div h4 { margin: 5px 0 0; font-size: 14px; }
 .advanced-workflow label { display: grid; gap: 6px; color: #545d62; font-size: 11px; font-weight: 750; }
 .advanced-workflow input { width: 100%; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid #b9b09a; border-radius: 4px; background: white; }

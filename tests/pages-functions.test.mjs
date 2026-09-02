@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createPack } from '../functions/_lib/pack.js';
 import { buildPayload } from '../functions/_lib/minimax.js';
@@ -52,4 +53,12 @@ test('RunningHub rejects a completed workflow without a video output', () => {
   assert.equal(result.status, 'failed');
   assert.equal(result.video_url, null);
   assert.match(result.error, /没有返回/);
+});
+
+test('Creator UI exposes RunningHub workflow presets without legacy provider choices', () => {
+  const source = readFileSync(new URL('../web/app.js', import.meta.url), 'utf8');
+  assert.match(source, /MiniMax H3 · 快速出片/);
+  assert.match(source, /Seedance · 高质量/);
+  assert.doesNotMatch(source, /id="video-provider"/);
+  assert.doesNotMatch(source, /data-submit-video/);
 });

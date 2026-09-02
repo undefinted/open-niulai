@@ -3,9 +3,15 @@ const workspace = document.querySelector('#workspace');
 const toast = document.querySelector('#toast');
 let currentPack = null;
 let providerState = {providers: [], connected: [], secure_context: false};
-let selectedProvider = 'minimax';
+let selectedWorkflow = 'minimax-h3';
 let firstFrameDataUrl = null;
 const connectionKey = provider => `open-niulai:${provider}:connection`;
+const workflowConfigKey = preset => `open-niulai:runninghub:workflow:${preset}`;
+const workflowPresets = {
+  'minimax-h3': {name:'MiniMax H3', badge:'快速出片', description:'适合文生视频、首帧引导和带声音的短片工作流。'},
+  'seedance': {name:'Seedance', badge:'高质量', description:'适合多参考素材、角色一致性和视频编辑工作流。'},
+  'custom': {name:'自定义工作流', badge:'专业模式', description:'运行你在 RunningHub 中保存的任意视频工作流。'},
+};
 
 function getConnection(provider) {
   try { return JSON.parse(sessionStorage.getItem(connectionKey(provider)) || 'null'); }
@@ -15,6 +21,15 @@ function getConnection(provider) {
 function providerHeaders(provider) {
   const connection = getConnection(provider);
   return connection ? {'X-Provider-Key': connection.api_key, 'X-Provider-Region': connection.region || 'cn'} : {};
+}
+
+function getWorkflowConfig(preset) {
+  try { return JSON.parse(sessionStorage.getItem(workflowConfigKey(preset)) || '{}'); }
+  catch { return {}; }
+}
+
+function saveWorkflowConfig(preset, config) {
+  sessionStorage.setItem(workflowConfigKey(preset), JSON.stringify(config));
 }
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
@@ -41,10 +56,10 @@ function render(pack) {
     <article class="prompt-card">${copyButton(text)}<span>图像提示词</span><h3>${visualLabels[key] || key}</h3><p>${escapeHtml(text)}</p></article>`).join('')}</div>`;
 
   const shot = pack.video_shots[0];
-  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 内容已就绪</span><h3 id="generation-title">直接从这里生成视频</h3><p id="generation-account-note">选择 MiniMax 将使用你的 MiniMax 账户额度。</p></div><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">未上传首帧：文本直出</b></label><label class="model-select"><span>第 3 步 · 生成方式</span><select id="video-provider"><option value="minimax">MiniMax H3 · 快速生成</option><option value="runninghub">RunningHub · 高级工作流</option><option value="runway">Runway</option><option value="kling">可灵</option><option value="seedance">Seedance</option><option value="local-svd">本地 SVD</option></select></label><div id="generation-action"></div><div id="advanced-workflow" class="advanced-workflow hidden"><div><span class="provider-badge">RunningHub 工作流参数</span><h4>把制作方案映射到你的 ComfyUI 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="例如 1904136902449209346"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选）<input id="rh-access-password" type="password" autocomplete="off"></label><p>节点 ID 和字段名来自该工作流导出的 API JSON。首帧会先上传，再写入图片加载节点。</p></div><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>怎么选？</strong><span>MiniMax 适合快速出片；RunningHub 适合需要 LoRA、ControlNet、角色一致性或自定义采样参数的工作流。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
+  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 内容已就绪</span><h3 id="generation-title">直接从这里生成视频</h3><p id="generation-account-note">生成任务统一由 RunningHub 执行，并使用你的 RunningHub 账户额度。</p></div><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">未上传首帧：文本直出</b></label><label class="model-select"><span>第 3 步 · 视频工作流</span><select id="video-workflow"><option value="minimax-h3">MiniMax H3 · 快速出片</option><option value="seedance">Seedance · 高质量</option><option value="custom">自定义 RunningHub 工作流</option></select></label><div id="generation-action"></div><div id="workflow-summary" class="workflow-summary"></div><details id="workflow-config" class="workflow-config"><summary>工作流绑定与高级设置</summary><div class="advanced-workflow"><div><span class="provider-badge">仅需绑定一次</span><h4 id="workflow-config-title">绑定 RunningHub 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="从 RunningHub API 调用页复制"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选，不保存）<input id="rh-access-password" type="password" autocomplete="off"></label><p>工作流 ID 与节点字段来自 RunningHub 的 API 调用配置。不同预设分别保存在当前浏览器会话中；API Key 和访问密码不会写入项目。</p></div></details><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>统一生成</strong><span>Open NiuLai 负责脚本、分镜和提示词，RunningHub 负责 MiniMax H3、Seedance 与自定义工作流的算力和计费。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
     <div><dt>镜头</dt><dd>${escapeHtml(shot.camera)}</dd></div><div><dt>台词</dt><dd>${escapeHtml(shot.voiceover)}</dd></div><div><dt>避免</dt><dd>${escapeHtml(shot.negative_prompt)}</dd></div>
   </dl></aside></div><div class="result-player"><video controls muted loop playsinline poster="/demo/mao-first-frame.png"><source src="/demo/mao-lai-svd-captioned.mp4" type="video/mp4"></video><p><strong>参考样片</strong><br>当前播放的是本地 SVD 验证样片，不是本次输入即时生成的成片。</p></div></div>`;
-  loadProviders().then(updateGenerationStudio).catch(error => notify(error.message));
+  loadProviders().then(() => { updateWorkflowPreset(); updateGenerationStudio(); }).catch(error => notify(error.message));
 
   const copy = pack.publishing_copy;
   document.querySelector('#tab-publish').innerHTML = `<div class="publish-grid">
@@ -120,12 +135,12 @@ async function loadProviders() {
   const notice = document.querySelector('#security-notice');
   notice.classList.toggle('hidden', providerState.secure_context);
   notice.textContent = providerState.secure_context ? '' : '当前站点使用 HTTP，为防止凭证泄露，API Key 连接已禁用。配置 HTTPS 后自动开放。';
-  document.querySelector('#provider-list').innerHTML = providerState.providers.map(item => {
+  document.querySelector('#provider-list').innerHTML = providerState.providers.filter(item => item.id === 'runninghub').map(item => {
     const connected = providerState.connected.includes(item.id);
     const badge = connected ? '已临时连接' : item.connection === 'api_key' ? (providerState.secure_context ? 'API Key' : 'HTTPS 后可连接') : item.connection === 'external' ? '跳转使用' : '演示可用';
     let action = '';
     if (connected) action = `<button type="button" class="secondary" data-disconnect="${item.id}">断开</button>`;
-    else if (item.connection === 'api_key' && providerState.secure_context) action = `<form class="key-form" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="仅在本次会话中使用">${item.id === 'minimax' ? '<select name="region" aria-label="MiniMax 服务区"><option value="cn">中国区</option><option value="global">国际区</option></select>' : ''}<button class="secondary" type="submit">连接</button></form>`;
+    else if (item.connection === 'api_key' && providerState.secure_context) action = `<form class="key-form" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="RunningHub API Key"><button class="secondary" type="submit">连接</button></form>`;
     else if (item.account_url) action = `<a class="secondary action-link" href="${item.account_url}" target="_blank" rel="noreferrer">前往平台 ↗</a>`;
     return `<article class="provider-row"><div><span class="provider-badge">${badge}</span><h3>${escapeHtml(item.name)}</h3><p>${item.connection === 'api_key' ? '生成费用从你的平台账户扣除，凭证不写入磁盘。' : item.connection === 'external' ? '复制制作包内容后，在模型平台官网完成生成。' : '可直接查看仓库内经过验证的 SVD 样片。'}</p></div>${action}</article>`;
   }).join('');
@@ -133,27 +148,34 @@ async function loadProviders() {
 }
 
 function updateGenerationStudio() {
-  const select = document.querySelector('#video-provider');
   const action = document.querySelector('#generation-action');
-  if (!select || !action) return;
-  select.value = selectedProvider;
-  const item = providerState.providers.find(provider => provider.id === selectedProvider);
+  if (!action) return;
+  const item = providerState.providers.find(provider => provider.id === 'runninghub');
   if (!item) return;
   const connected = providerState.connected.includes(item.id);
   const note = document.querySelector('#generation-account-note');
-  const advanced = document.querySelector('#advanced-workflow');
-  advanced?.classList.toggle('hidden', selectedProvider !== 'runninghub');
-  note.textContent = item.connection === 'local' ? '本地模式不消耗第三方平台额度，当前服务器仅提供已验证样片。' : `选择 ${item.name} 将使用你的 ${item.name} 账户额度，Open NiuLai 不代充值。`;
-  if (item.connection === 'api_key') {
-    if (!providerState.secure_context) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>配置 HTTPS 后连接</span><b>→</b></button>';
-    else if (!connected) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>连接账户</span><b>→</b></button>';
-    else if (selectedProvider === 'runninghub') action.innerHTML = '<button class="primary" type="button" data-submit-runninghub><span>确认费用并运行工作流</span><b>→</b></button>';
-    else action.innerHTML = '<button class="primary" type="button" data-submit-video><span>确认费用并生成</span><b>→</b></button>';
-  } else if (item.connection === 'external') {
-    action.innerHTML = `<a class="primary generation-link" href="${item.account_url}" target="_blank" rel="noreferrer"><span>前往 ${escapeHtml(item.name)} 生成</span><b>↗</b></a>`;
-  } else {
-    action.innerHTML = '<button class="secondary" type="button" data-view-sample>查看参考样片</button>';
-  }
+  note.textContent = `${workflowPresets[selectedWorkflow].name} 将在 RunningHub 中运行，费用从你的 RunningHub 账户扣除。`;
+  if (!providerState.secure_context) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>配置 HTTPS 后连接</span><b>→</b></button>';
+  else if (!connected) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>连接 RunningHub</span><b>→</b></button>';
+  else action.innerHTML = '<button class="primary" type="button" data-submit-runninghub><span>确认费用并生成</span><b>→</b></button>';
+}
+
+function updateWorkflowPreset() {
+  const select = document.querySelector('#video-workflow');
+  if (!select) return;
+  select.value = selectedWorkflow;
+  const preset = workflowPresets[selectedWorkflow];
+  const config = getWorkflowConfig(selectedWorkflow);
+  document.querySelector('#workflow-summary').innerHTML = `<span class="provider-badge">${escapeHtml(preset.badge)}</span><strong>${escapeHtml(preset.name)}</strong><p>${escapeHtml(preset.description)}</p>`;
+  document.querySelector('#workflow-config-title').textContent = `绑定 ${preset.name} 工作流`;
+  document.querySelector('#rh-workflow-id').value = config.workflow_id || '';
+  document.querySelector('#rh-prompt-node').value = config.prompt_node_id || '';
+  document.querySelector('#rh-prompt-field').value = config.prompt_field || 'text';
+  document.querySelector('#rh-image-node').value = config.image_node_id || '';
+  document.querySelector('#rh-image-field').value = config.image_field || 'image';
+  document.querySelector('#rh-access-password').value = '';
+  document.querySelector('#workflow-config').open = !config.workflow_id || !config.prompt_node_id;
+  updateGenerationStudio();
 }
 
 async function openConnections() {
@@ -164,9 +186,9 @@ document.querySelector('#connections-open').addEventListener('click', openConnec
 document.querySelector('#connections-close').addEventListener('click', () => dialog.close());
 document.addEventListener('click', event => { if (event.target.closest('[data-open-connections]')) openConnections(); });
 document.addEventListener('change', event => {
-  if (event.target.id === 'video-provider') {
-    selectedProvider = event.target.value;
-    updateGenerationStudio();
+  if (event.target.id === 'video-workflow') {
+    selectedWorkflow = event.target.value;
+    updateWorkflowPreset();
   }
   if (event.target.id === 'first-frame') {
     const file = event.target.files[0];
@@ -179,7 +201,6 @@ document.addEventListener('change', event => {
 });
 document.addEventListener('click', event => {
   if (event.target.closest('[data-view-sample]')) document.querySelector('.result-player')?.scrollIntoView({behavior:'smooth', block:'center'});
-  if (event.target.closest('[data-submit-video]')) submitVideo();
   if (event.target.closest('[data-submit-runninghub]')) submitRunningHub();
 });
 
@@ -208,36 +229,19 @@ dialog.addEventListener('click', async event => {
   notify('连接已断开');
 });
 
-async function submitVideo() {
-  if (!currentPack || selectedProvider !== 'minimax') return;
-  if (!window.confirm('将使用你自己的 MiniMax 按量付费额度创建 1 个 H3 视频任务。是否确认提交？')) return;
-  const action = document.querySelector('[data-submit-video]');
-  action.disabled = true;
-  const status = document.querySelector('#video-job-status');
-  status.classList.remove('hidden');
-  status.innerHTML = '<strong>正在提交</strong><span>正在创建一次付费任务，请勿重复点击。</span>';
-  try {
-    const shot = currentPack.video_shots[0];
-    const requested = Number(currentPack.constraint_report.duration_seconds || 10);
-    const response = await fetch('/api/video-jobs', {method:'POST', headers:{'Content-Type':'application/json', ...providerHeaders('minimax')}, body:JSON.stringify({provider:'minimax', prompt:shot.motion_prompt, duration:Math.max(4,Math.min(15,requested)), ratio:'16:9', first_frame_image:firstFrameDataUrl, confirm_paid:true})});
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || '任务提交失败');
-    showJob(result.job);
-    pollJob(result.job.id, 'minimax');
-  } catch (error) {
-    status.innerHTML = `<strong>提交失败</strong><span>${escapeHtml(error.message)}</span>`;
-    action.disabled = false;
-  }
-}
-
 async function submitRunningHub() {
-  if (!currentPack || selectedProvider !== 'runninghub') return;
+  if (!currentPack) return;
   const workflowId = document.querySelector('#rh-workflow-id').value.trim();
   const promptNodeId = document.querySelector('#rh-prompt-node').value.trim();
   const imageNodeId = document.querySelector('#rh-image-node').value.trim();
   if (!workflowId || !promptNodeId) { notify('请填写工作流 ID 和提示词节点 ID'); return; }
   if (firstFrameDataUrl && !imageNodeId) { notify('上传首帧后需要填写图片节点 ID'); return; }
-  if (!window.confirm('将使用你自己的 RunningHub 账户额度运行一次工作流。是否确认提交？')) return;
+  saveWorkflowConfig(selectedWorkflow, {
+    workflow_id:workflowId, prompt_node_id:promptNodeId,
+    prompt_field:document.querySelector('#rh-prompt-field').value.trim() || 'text',
+    image_node_id:imageNodeId, image_field:document.querySelector('#rh-image-field').value.trim() || 'image',
+  });
+  if (!window.confirm(`将使用你的 RunningHub 账户额度运行 ${workflowPresets[selectedWorkflow].name} 工作流。是否确认提交？`)) return;
   const action = document.querySelector('[data-submit-runninghub]');
   const status = document.querySelector('#video-job-status');
   action.disabled = true;
@@ -258,7 +262,7 @@ async function submitRunningHub() {
     const response = await fetch('/api/video-jobs', {
       method:'POST', headers:{'Content-Type':'application/json', ...providerHeaders('runninghub')},
       body:JSON.stringify({
-        provider:'runninghub', confirm_paid:true, workflow_id:workflowId, prompt:shot.motion_prompt,
+        provider:'runninghub', workflow_preset:selectedWorkflow, confirm_paid:true, workflow_id:workflowId, prompt:shot.motion_prompt,
         prompt_node_id:promptNodeId, prompt_field:document.querySelector('#rh-prompt-field').value.trim() || 'text',
         image_node_id:imageNodeId, image_field:document.querySelector('#rh-image-field').value.trim() || 'image',
         uploaded_file_name:uploadedFileName, access_password:document.querySelector('#rh-access-password').value,
@@ -278,8 +282,9 @@ function showJob(job) {
   const status = document.querySelector('#video-job-status');
   const labels = {queued:'排队中',running:'生成中',succeeded:'生成完成',failed:'生成失败',cancelled:'已取消',expired:'已过期',timeout:'查询暂停'};
   status.classList.remove('hidden');
+  const presetName = workflowPresets[job.workflow_preset || selectedWorkflow]?.name || '自定义工作流';
   const detail = job.provider === 'runninghub'
-    ? `RunningHub 工作流${job.workflow_id ? ` · ${escapeHtml(job.workflow_id)}` : ''}`
+    ? `${escapeHtml(presetName)} · RunningHub${job.workflow_id ? ` · ${escapeHtml(job.workflow_id)}` : ''}`
     : `MiniMax H3 · ${job.duration || '-'} 秒 · ${job.ratio || '-'} · ${job.input_mode === 'first_frame' ? '首帧引导' : '文本直出'}`;
   status.innerHTML = `<strong>${labels[job.status] || escapeHtml(job.status)}</strong><span>${job.error ? escapeHtml(job.error) : detail}</span>`;
   if (job.video_url) {

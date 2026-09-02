@@ -20,6 +20,7 @@ export async function onRequestPost(context) {
       return json({ job: {
         id: String(data.taskId), provider: 'runninghub', model: 'RunningHub Workflow',
         status: String(data.taskStatus || 'queued').toLowerCase(), workflow_id: workflowId,
+        workflow_preset: String(payload.workflow_preset || 'custom'),
         input_mode: payload.uploaded_file_name ? 'first_frame' : 'text', created_at: Math.floor(Date.now() / 1000),
       } }, 202);
     }

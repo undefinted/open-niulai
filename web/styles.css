@@ -84,6 +84,12 @@ h2 { margin: 0 0 8px; font-size: 30px; line-height: 1.2; }
 .frame-upload b { min-height: 42px; display: flex; align-items: center; padding: 0 10px; overflow: hidden; border: 1px dashed #a99b72; border-radius: 4px; background: white; color: #5d5642; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .frame-upload b:hover { border-color: var(--coral); color: var(--coral-dark); }
 .generation-link { min-height: 42px; color: white; text-decoration: none; }
+.advanced-workflow { grid-column: 1 / -1; display: grid; grid-template-columns: 1.25fr repeat(3,minmax(130px,1fr)); gap: 12px; align-items: end; padding-top: 16px; border-top: 1px solid #e2d6ad; }
+.advanced-workflow > div h4 { margin: 5px 0 0; font-size: 14px; }
+.advanced-workflow label { display: grid; gap: 6px; color: #545d62; font-size: 11px; font-weight: 750; }
+.advanced-workflow input { width: 100%; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid #b9b09a; border-radius: 4px; background: white; }
+.advanced-workflow > p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.advanced-workflow.hidden, .job-status.hidden { display: none; }
 .job-status { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding-top: 14px; border-top: 1px solid #e2d6ad; }
 .job-status strong { font-size: 13px; }
 .job-status span { color: var(--muted); font-size: 12px; }
@@ -133,6 +139,8 @@ footer a { color: var(--ink); }
   .controls { grid-template-columns: repeat(2,1fr); }
   .story-grid, .prompt-grid, .publish-grid { grid-template-columns: 1fr; }
   .video-prompt, .proof-grid, .section-head, .result-player, .generation-studio { grid-template-columns: 1fr; }
+  .advanced-workflow { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .advanced-workflow > div, .advanced-workflow > p { grid-column: 1 / -1; }
   .workspace-head { align-items: start; flex-direction: column; }
 }
 @media (max-width: 560px) {
@@ -150,5 +158,7 @@ footer a { color: var(--ink); }
   .provider-row { grid-template-columns: 1fr; }
   .key-form { grid-template-columns: 1fr; }
   .generation-bar { align-items: stretch; flex-direction: column; }
+  .advanced-workflow { grid-template-columns: 1fr; }
+  .advanced-workflow > div, .advanced-workflow > p { grid-column: auto; }
   footer { align-items: flex-start; flex-direction: column; }
 }

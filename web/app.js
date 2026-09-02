@@ -41,7 +41,7 @@ function render(pack) {
     <article class="prompt-card">${copyButton(text)}<span>图像提示词</span><h3>${visualLabels[key] || key}</h3><p>${escapeHtml(text)}</p></article>`).join('')}</div>`;
 
   const shot = pack.video_shots[0];
-  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 内容已就绪</span><h3 id="generation-title">直接从这里生成视频</h3><p id="generation-account-note">选择 MiniMax 将使用你的 MiniMax 账户额度。</p></div><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">未上传首帧：文本直出</b></label><label class="model-select"><span>第 3 步 · 视频模型</span><select id="video-provider"><option value="minimax">MiniMax H3</option><option value="runway">Runway</option><option value="kling">可灵</option><option value="seedance">Seedance</option><option value="local-svd">本地 SVD</option></select></label><div id="generation-action"></div><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>怎么选？</strong><span>文本直出适合快速试错，但角色外观不稳定；上传一张确认过的首帧再生成，更容易保持角色和构图。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
+  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 内容已就绪</span><h3 id="generation-title">直接从这里生成视频</h3><p id="generation-account-note">选择 MiniMax 将使用你的 MiniMax 账户额度。</p></div><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">未上传首帧：文本直出</b></label><label class="model-select"><span>第 3 步 · 生成方式</span><select id="video-provider"><option value="minimax">MiniMax H3 · 快速生成</option><option value="runninghub">RunningHub · 高级工作流</option><option value="runway">Runway</option><option value="kling">可灵</option><option value="seedance">Seedance</option><option value="local-svd">本地 SVD</option></select></label><div id="generation-action"></div><div id="advanced-workflow" class="advanced-workflow hidden"><div><span class="provider-badge">RunningHub 工作流参数</span><h4>把制作方案映射到你的 ComfyUI 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="例如 1904136902449209346"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选）<input id="rh-access-password" type="password" autocomplete="off"></label><p>节点 ID 和字段名来自该工作流导出的 API JSON。首帧会先上传，再写入图片加载节点。</p></div><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>怎么选？</strong><span>MiniMax 适合快速出片；RunningHub 适合需要 LoRA、ControlNet、角色一致性或自定义采样参数的工作流。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
     <div><dt>镜头</dt><dd>${escapeHtml(shot.camera)}</dd></div><div><dt>台词</dt><dd>${escapeHtml(shot.voiceover)}</dd></div><div><dt>避免</dt><dd>${escapeHtml(shot.negative_prompt)}</dd></div>
   </dl></aside></div><div class="result-player"><video controls muted loop playsinline poster="/demo/mao-first-frame.png"><source src="/demo/mao-lai-svd-captioned.mp4" type="video/mp4"></video><p><strong>参考样片</strong><br>当前播放的是本地 SVD 验证样片，不是本次输入即时生成的成片。</p></div></div>`;
   loadProviders().then(updateGenerationStudio).catch(error => notify(error.message));
@@ -141,10 +141,13 @@ function updateGenerationStudio() {
   if (!item) return;
   const connected = providerState.connected.includes(item.id);
   const note = document.querySelector('#generation-account-note');
+  const advanced = document.querySelector('#advanced-workflow');
+  advanced?.classList.toggle('hidden', selectedProvider !== 'runninghub');
   note.textContent = item.connection === 'local' ? '本地模式不消耗第三方平台额度，当前服务器仅提供已验证样片。' : `选择 ${item.name} 将使用你的 ${item.name} 账户额度，Open NiuLai 不代充值。`;
   if (item.connection === 'api_key') {
     if (!providerState.secure_context) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>配置 HTTPS 后连接</span><b>→</b></button>';
     else if (!connected) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>连接账户</span><b>→</b></button>';
+    else if (selectedProvider === 'runninghub') action.innerHTML = '<button class="primary" type="button" data-submit-runninghub><span>确认费用并运行工作流</span><b>→</b></button>';
     else action.innerHTML = '<button class="primary" type="button" data-submit-video><span>确认费用并生成</span><b>→</b></button>';
   } else if (item.connection === 'external') {
     action.innerHTML = `<a class="primary generation-link" href="${item.account_url}" target="_blank" rel="noreferrer"><span>前往 ${escapeHtml(item.name)} 生成</span><b>↗</b></a>`;
@@ -177,6 +180,7 @@ document.addEventListener('change', event => {
 document.addEventListener('click', event => {
   if (event.target.closest('[data-view-sample]')) document.querySelector('.result-player')?.scrollIntoView({behavior:'smooth', block:'center'});
   if (event.target.closest('[data-submit-video]')) submitVideo();
+  if (event.target.closest('[data-submit-runninghub]')) submitRunningHub();
 });
 
 dialog.addEventListener('submit', async event => {
@@ -219,7 +223,51 @@ async function submitVideo() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || '任务提交失败');
     showJob(result.job);
-    pollJob(result.job.id);
+    pollJob(result.job.id, 'minimax');
+  } catch (error) {
+    status.innerHTML = `<strong>提交失败</strong><span>${escapeHtml(error.message)}</span>`;
+    action.disabled = false;
+  }
+}
+
+async function submitRunningHub() {
+  if (!currentPack || selectedProvider !== 'runninghub') return;
+  const workflowId = document.querySelector('#rh-workflow-id').value.trim();
+  const promptNodeId = document.querySelector('#rh-prompt-node').value.trim();
+  const imageNodeId = document.querySelector('#rh-image-node').value.trim();
+  if (!workflowId || !promptNodeId) { notify('请填写工作流 ID 和提示词节点 ID'); return; }
+  if (firstFrameDataUrl && !imageNodeId) { notify('上传首帧后需要填写图片节点 ID'); return; }
+  if (!window.confirm('将使用你自己的 RunningHub 账户额度运行一次工作流。是否确认提交？')) return;
+  const action = document.querySelector('[data-submit-runninghub]');
+  const status = document.querySelector('#video-job-status');
+  action.disabled = true;
+  status.classList.remove('hidden');
+  status.innerHTML = '<strong>正在准备工作流</strong><span>正在上传素材并创建付费任务，请勿重复点击。</span>';
+  try {
+    let uploadedFileName = null;
+    if (firstFrameDataUrl) {
+      const upload = await fetch('/api/runninghub/uploads', {
+        method:'POST', headers:{'Content-Type':'application/json', ...providerHeaders('runninghub')},
+        body:JSON.stringify({data_url:firstFrameDataUrl, filename:'open-niulai-first-frame.png'}),
+      });
+      const uploaded = await upload.json();
+      if (!upload.ok) throw new Error(uploaded.error || '首帧上传失败');
+      uploadedFileName = uploaded.file_name;
+    }
+    const shot = currentPack.video_shots[0];
+    const response = await fetch('/api/video-jobs', {
+      method:'POST', headers:{'Content-Type':'application/json', ...providerHeaders('runninghub')},
+      body:JSON.stringify({
+        provider:'runninghub', confirm_paid:true, workflow_id:workflowId, prompt:shot.motion_prompt,
+        prompt_node_id:promptNodeId, prompt_field:document.querySelector('#rh-prompt-field').value.trim() || 'text',
+        image_node_id:imageNodeId, image_field:document.querySelector('#rh-image-field').value.trim() || 'image',
+        uploaded_file_name:uploadedFileName, access_password:document.querySelector('#rh-access-password').value,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || '工作流提交失败');
+    showJob(result.job);
+    pollJob(result.job.id, 'runninghub');
   } catch (error) {
     status.innerHTML = `<strong>提交失败</strong><span>${escapeHtml(error.message)}</span>`;
     action.disabled = false;
@@ -230,16 +278,20 @@ function showJob(job) {
   const status = document.querySelector('#video-job-status');
   const labels = {queued:'排队中',running:'生成中',succeeded:'生成完成',failed:'生成失败',cancelled:'已取消',expired:'已过期',timeout:'查询暂停'};
   status.classList.remove('hidden');
-  status.innerHTML = `<strong>${labels[job.status] || escapeHtml(job.status)}</strong><span>${job.error ? escapeHtml(job.error) : `MiniMax H3 · ${job.duration} 秒 · ${job.ratio} · ${job.input_mode === 'first_frame' ? '首帧引导' : '文本直出'}`}</span>`;
+  const detail = job.provider === 'runninghub'
+    ? `RunningHub 工作流${job.workflow_id ? ` · ${escapeHtml(job.workflow_id)}` : ''}`
+    : `MiniMax H3 · ${job.duration || '-'} 秒 · ${job.ratio || '-'} · ${job.input_mode === 'first_frame' ? '首帧引导' : '文本直出'}`;
+  status.innerHTML = `<strong>${labels[job.status] || escapeHtml(job.status)}</strong><span>${job.error ? escapeHtml(job.error) : detail}</span>`;
   if (job.video_url) {
-    document.querySelector('.result-player').innerHTML = `<video controls autoplay playsinline><source src="${job.video_url}" type="video/mp4"></video><p><strong>本次生成结果</strong><br>视频已从 MiniMax 下载到 Open NiuLai，可直接播放或下载。</p><a class="secondary action-link" href="${job.video_url}" download>下载 MP4</a>`;
+    const providerName = job.provider === 'runninghub' ? 'RunningHub' : 'MiniMax';
+    document.querySelector('.result-player').innerHTML = `<video controls autoplay playsinline><source src="${escapeHtml(job.video_url)}" type="video/mp4"></video><p><strong>本次生成结果</strong><br>${providerName} 已返回真实生成结果，可直接播放或下载。</p><a class="secondary action-link" href="${escapeHtml(job.video_url)}" target="_blank" rel="noreferrer">下载或打开成片</a>`;
   }
 }
 
-function pollJob(jobId) {
+function pollJob(jobId, provider) {
   const timer = setInterval(async () => {
     try {
-      const response = await fetch(`/api/video-jobs/${encodeURIComponent(jobId)}`, {headers:providerHeaders('minimax')});
+      const response = await fetch(`/api/video-jobs/${encodeURIComponent(jobId)}?provider=${encodeURIComponent(provider)}`, {headers:providerHeaders(provider)});
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '查询失败');
       showJob(result.job);

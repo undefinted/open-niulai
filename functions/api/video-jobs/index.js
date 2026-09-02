@@ -1,12 +1,29 @@
 import { errorResponse, json, readJson } from '../../_lib/http.js';
 import { buildPayload, credentials, minimaxRequest } from '../../_lib/minimax.js';
+import { buildNodeInfo, runningHubJson } from '../../_lib/runninghub.js';
 
 export async function onRequestPost(context) {
   try {
     const payload = await readJson(context.request, 16 * 1024 * 1024);
     if (payload.confirm_paid !== true) throw new Error('提交付费任务前必须明确确认费用。');
-    if (payload.provider !== 'minimax') return json({ error: '当前站内真实生成支持 MiniMax H3。' }, 501);
     const { apiKey, region } = credentials(context.request);
+    if (payload.provider === 'runninghub') {
+      const workflowId = String(payload.workflow_id || '').trim();
+      if (!/^\d{6,30}$/.test(workflowId)) throw new Error('RunningHub 工作流 ID 无效。');
+      const data = await runningHubJson('/task/openapi/create', apiKey, {
+        workflowId,
+        nodeInfoList: buildNodeInfo(payload, payload.uploaded_file_name || null),
+        accessPassword: String(payload.access_password || '').trim() || undefined,
+        addMetadata: true,
+      });
+      if (!data?.taskId) throw new Error('RunningHub 响应未返回任务 ID，未自动重试以避免重复扣费。');
+      return json({ job: {
+        id: String(data.taskId), provider: 'runninghub', model: 'RunningHub Workflow',
+        status: String(data.taskStatus || 'queued').toLowerCase(), workflow_id: workflowId,
+        input_mode: payload.uploaded_file_name ? 'first_frame' : 'text', created_at: Math.floor(Date.now() / 1000),
+      } }, 202);
+    }
+    if (payload.provider !== 'minimax') return json({ error: '当前站内真实生成支持 MiniMax H3 和 RunningHub 工作流。' }, 501);
     const duration = Math.max(4, Math.min(15, Number(payload.duration || 10)));
     const requestBody = buildPayload(payload.prompt, duration, String(payload.ratio || '16:9'), payload.first_frame_image || null);
     const result = await minimaxRequest('POST', '/v2/video_generation', apiKey, region, requestBody);

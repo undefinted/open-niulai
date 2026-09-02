@@ -16,7 +16,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from scripts.build_open_niulai_pack import PackInput, TEMPLATES, build_pack
-from scripts import minimax_h3_adapter
+from scripts import minimax_h3_adapter, runninghub_adapter
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +31,7 @@ VIDEO_JOBS: dict[str, dict] = {}
 VIDEO_JOBS_LOCK = threading.Lock()
 PROVIDERS = [
     {"id": "minimax", "name": "MiniMax H3", "connection": "api_key", "status": "available", "account_url": "https://platform.minimaxi.com/"},
+    {"id": "runninghub", "name": "RunningHub 工作流", "connection": "api_key", "status": "available", "account_url": "https://www.runninghub.ai/"},
     {"id": "runway", "name": "Runway", "connection": "api_key", "status": "available", "account_url": "https://app.runwayml.com/"},
     {"id": "kling", "name": "可灵", "connection": "external", "status": "export", "account_url": "https://klingai.kuaishou.com/"},
     {"id": "seedance", "name": "Seedance", "connection": "external", "status": "export", "account_url": "https://jimeng.jianying.com/"},
@@ -171,7 +172,7 @@ class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = unquote(urlparse(self.path).path)
         if path == "/api/health":
-            self.send_json({"ok": True, "version": "0.5.1", "mode": "creator"})
+            self.send_json({"ok": True, "version": "0.6.0", "mode": "creator"})
             return
         if path == "/api/providers":
             self.send_json({"providers": PROVIDERS, "secure_context": self.request_is_secure(), **self.connection_status(self.session_token())})
@@ -184,6 +185,18 @@ class AppHandler(BaseHTTPRequestHandler):
                 if not job or job.get("session_token") != token:
                     self.send_json({"error": "找不到该视频任务。"}, HTTPStatus.NOT_FOUND)
                     return
+                provider_id = job.get("provider")
+                provider_task_id = job.get("provider_task_id")
+            if provider_id == "runninghub":
+                update = runninghub_adapter.query_outputs(self.headers.get("X-Provider-Key", ""), provider_task_id)
+                with VIDEO_JOBS_LOCK:
+                    job = VIDEO_JOBS.get(job_id)
+                    if not job or job.get("session_token") != token:
+                        self.send_json({"error": "找不到该视频任务。"}, HTTPStatus.NOT_FOUND)
+                        return
+                    job.update(update)
+                    job["updated_at"] = int(time.time())
+            with VIDEO_JOBS_LOCK:
                 result = public_job(job)
             self.send_json({"job": result})
             return
@@ -217,6 +230,15 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
+        if path == "/api/runninghub/uploads":
+            try:
+                payload = self.read_payload(16 * 1024 * 1024)
+                api_key = self.headers.get("X-Provider-Key", "")
+                file_name = runninghub_adapter.upload_data_url(api_key, str(payload.get("data_url", "")), str(payload.get("filename", "first-frame.png")))
+                self.send_json({"file_name": file_name})
+            except (ValueError, TypeError, json.JSONDecodeError, runninghub_adapter.RunningHubError) as exc:
+                self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
         if path.startswith("/api/connections/"):
             try:
                 if not self.request_is_secure():
@@ -255,29 +277,41 @@ class AppHandler(BaseHTTPRequestHandler):
                 if payload.get("confirm_paid") is not True:
                     raise ValueError("提交付费任务前必须明确确认费用。")
                 provider_id = str(payload.get("provider", ""))
-                if provider_id != "minimax":
-                    self.send_json({"error": "当前站内真实生成首先支持 MiniMax H3；其他模型请使用平台跳转。"}, HTTPStatus.NOT_IMPLEMENTED)
+                if provider_id not in {"minimax", "runninghub"}:
+                    self.send_json({"error": "当前站内真实生成支持 MiniMax H3 和 RunningHub 工作流。"}, HTTPStatus.NOT_IMPLEMENTED)
                     return
                 token = self.session_token()
                 with SESSIONS_LOCK:
                     connection = SESSIONS.get(token, {}).get("connections", {}).get(provider_id) if token else None
-                if not connection:
-                    self.send_json({"error": "请先连接 MiniMax 账户。"}, HTTPStatus.UNAUTHORIZED)
+                header_key = self.headers.get("X-Provider-Key", "")
+                if not connection and not header_key:
+                    self.send_json({"error": f"请先连接 {provider(provider_id)['name']} 账户。"}, HTTPStatus.UNAUTHORIZED)
+                    return
+                api_key = header_key or connection["api_key"]
+                if provider_id == "runninghub":
+                    task_id, task_status = runninghub_adapter.create_task(api_key, payload)
+                    job_id = secrets.token_urlsafe(16)
+                    now = int(time.time())
+                    job = {"id": job_id, "provider": "runninghub", "model": "RunningHub Workflow", "status": task_status, "workflow_id": str(payload.get("workflow_id")), "input_mode": "first_frame" if payload.get("uploaded_file_name") else "text", "created_at": now, "updated_at": now, "session_token": token, "provider_task_id": task_id}
+                    with VIDEO_JOBS_LOCK:
+                        VIDEO_JOBS[job_id] = job
+                    self.send_json({"job": public_job(job)}, HTTPStatus.ACCEPTED)
                     return
                 prompt = str(payload.get("prompt", "")).strip()
                 duration = int(payload.get("duration", 10))
                 duration = max(4, min(15, duration))
                 ratio = str(payload.get("ratio", "16:9"))
                 first_frame = str(payload.get("first_frame_image", "")) or None
-                task_id = minimax_h3_adapter.create_task(connection["api_key"], connection["region"], prompt, duration, ratio, first_frame)
+                region = self.headers.get("X-Provider-Region", "") or (connection or {}).get("region", "cn")
+                task_id = minimax_h3_adapter.create_task(api_key, region, prompt, duration, ratio, first_frame)
                 job_id = secrets.token_urlsafe(16)
                 now = int(time.time())
                 job = {"id": job_id, "provider": "minimax", "model": "MiniMax-H3", "status": "queued", "duration": duration, "ratio": "adaptive" if first_frame else ratio, "input_mode": "first_frame" if first_frame else "text", "created_at": now, "updated_at": now, "session_token": token, "provider_task_id": task_id}
                 with VIDEO_JOBS_LOCK:
                     VIDEO_JOBS[job_id] = job
-                threading.Thread(target=monitor_minimax_job, args=(job_id, connection["api_key"], connection["region"], task_id), daemon=True).start()
+                threading.Thread(target=monitor_minimax_job, args=(job_id, api_key, region, task_id), daemon=True).start()
                 self.send_json({"job": public_job(job)}, HTTPStatus.ACCEPTED)
-            except (ValueError, TypeError, json.JSONDecodeError, minimax_h3_adapter.MiniMaxH3Error) as exc:
+            except (ValueError, TypeError, json.JSONDecodeError, minimax_h3_adapter.MiniMaxH3Error, runninghub_adapter.RunningHubError) as exc:
                 self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
             return
         if path != "/api/packs":

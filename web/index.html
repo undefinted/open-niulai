@@ -11,7 +11,7 @@
   <header class="topbar">
     <a class="brand" href="/" aria-label="Open NiuLai 首页"><span class="brand-mark">来</span><strong>Open NiuLai</strong></a>
     <div class="top-actions">
-      <span class="status"><i></i>创作引擎在线</span>
+      <span id="service-status" class="status"><i></i>正在检查服务</span>
       <button id="connections-open" class="connection-trigger" type="button">连接 RunningHub</button>
       <a class="icon-link" href="https://github.com/undefinted/open-niulai" target="_blank" rel="noreferrer" title="GitHub" aria-label="GitHub">↗</a>
     </div>
@@ -64,6 +64,12 @@
       </form>
     </section>
 
+    <section id="recent-jobs" class="recent-jobs hidden" aria-labelledby="recent-jobs-title">
+      <div class="section-head compact"><div><p class="eyebrow">当前浏览器</p><h2 id="recent-jobs-title">最近生成任务</h2></div><button id="clear-jobs" class="secondary" type="button">清空记录</button></div>
+      <div id="job-history" class="job-history" aria-live="polite"></div>
+      <p class="storage-note">仅保存任务编号、工作流和状态，不保存 API Key、访问密码或上传素材。任务记录最多保留 20 条。</p>
+    </section>
+
     <section id="workspace" class="workspace hidden" aria-live="polite">
       <nav class="tabs" aria-label="制作方案">
         <button class="active" data-tab="story">故事</button>
@@ -94,7 +100,7 @@
     </section>
   </main>
 
-  <footer><span>Open NiuLai · 万物皆可来，但每一个都要原创</span><a href="https://github.com/undefinted/open-niulai/blob/main/docs/IP_POLICY.md">原创与 IP 边界</a></footer>
+  <footer><span>Open NiuLai · 万物皆可来，但每一个都要原创</span><nav><a href="/privacy.html">隐私说明</a><a href="/terms.html">服务条款</a><a href="https://github.com/undefinted/open-niulai/blob/main/docs/IP_POLICY.md">原创与 IP 边界</a></nav></footer>
   <dialog id="connections-dialog" aria-labelledby="connections-title">
     <div class="dialog-head"><div><p class="eyebrow">统一生成账户</p><h2 id="connections-title">连接 RunningHub</h2></div><button id="connections-close" class="dialog-close" type="button" aria-label="关闭">×</button></div>
     <p class="connection-intro">Open NiuLai 负责整理首帧、提示词和任务状态，生成费用由所选模型平台账户承担。</p>

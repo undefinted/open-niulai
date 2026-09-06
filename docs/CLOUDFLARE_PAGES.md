@@ -11,7 +11,16 @@ The public application is designed to run on Cloudflare Pages with Pages Functio
 - Build output directory: `dist`
 - Root directory: `/`
 
-No API key is required in the Cloudflare project settings. A visitor's MiniMax key stays in that browser tab's `sessionStorage`, is sent only to the same-origin Function when creating or querying that visitor's task, and is never committed or written to application storage.
+No model API key is required in the Cloudflare project settings. A visitor's RunningHub key stays in that browser tab's `sessionStorage`, is sent only to the same-origin Function when creating or querying that visitor's task, and is never committed or written to application storage.
+
+## Production bindings
+
+Create and bind two Cloudflare KV namespaces:
+
+- `JOBS`: seven-day anonymous task metadata, ownership checks, and best-effort duplicate submission protection.
+- `RATE_LIMITS`: hourly paid-task submission counters.
+
+Set `SESSION_SECRET` as an encrypted Pages secret with at least 32 random bytes. Optionally set `PAID_JOB_LIMIT_PER_HOUR`; the default is 6. Do not place the secret or real KV namespace IDs in Git. After deployment, `/api/health` must report `production_ready: true` before public promotion.
 
 ## Domain setup
 
@@ -21,7 +30,7 @@ No API key is required in the Cloudflare project settings. A visitor's MiniMax k
 4. Wait until the Cloudflare zone status becomes Active.
 5. Open Workers & Pages, select the Pages project, then add `myyuanlai.xyz` under Custom domains.
 6. Add `www.myyuanlai.xyz` as another custom domain and configure a redirect to the apex domain.
-7. Verify `https://myyuanlai.xyz/api/health` before enabling a paid MiniMax task.
+7. Verify `https://myyuanlai.xyz/api/health` before enabling a paid RunningHub task.
 
 Do not add MiniMax keys, Alibaba credentials, Tencent credentials, private keys, or certificate files to GitHub or Cloudflare build variables.
 

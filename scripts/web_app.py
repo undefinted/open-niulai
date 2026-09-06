@@ -110,7 +110,7 @@ def create_pack(payload: dict) -> dict:
 
 
 class AppHandler(BaseHTTPRequestHandler):
-    server_version = "OpenNiuLai/0.5"
+    server_version = "OpenNiuLai/0.7"
 
     def log_message(self, format: str, *args: object) -> None:
         print(f"{self.address_string()} - {format % args}")
@@ -172,7 +172,7 @@ class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         path = unquote(urlparse(self.path).path)
         if path == "/api/health":
-            self.send_json({"ok": True, "version": "0.6.0", "mode": "creator"})
+            self.send_json({"ok": True, "version": "0.7.0", "mode": "creator"})
             return
         if path == "/api/providers":
             self.send_json({"providers": PROVIDERS, "secure_context": self.request_is_secure(), **self.connection_status(self.session_token())})

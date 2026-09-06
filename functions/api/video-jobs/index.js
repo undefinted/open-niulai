@@ -1,11 +1,31 @@
 import { errorResponse, json, readJson } from '../../_lib/http.js';
 import { buildPayload, credentials, minimaxRequest } from '../../_lib/minimax.js';
 import { buildNodeInfo, runningHubJson } from '../../_lib/runninghub.js';
+import { assertPaidRuntime, consumeRateLimit, ensureSession, publicJob, validateIdempotencyKey } from '../../_lib/session.js';
+
+const JOB_TTL = 7 * 24 * 60 * 60;
+
+async function saveJob(env, job) {
+  if (!env.JOBS) return;
+  await Promise.all([
+    env.JOBS.put(`job:${job.provider}:${job.id}`, JSON.stringify(job), { expirationTtl: JOB_TTL }),
+    env.JOBS.put(`request:${job.owner}:${job.idempotency_key}`, JSON.stringify(job), { expirationTtl: JOB_TTL }),
+  ]);
+}
 
 export async function onRequestPost(context) {
   try {
+    assertPaidRuntime(context.request, context.env);
+    const session = await ensureSession(context.request, context.env);
+    const idempotencyKey = validateIdempotencyKey(context.request);
+    const responseHeaders = session.cookie ? { 'Set-Cookie': session.cookie } : {};
+    if (context.env.JOBS) {
+      const existing = await context.env.JOBS.get(`request:${session.id}:${idempotencyKey}`, 'json');
+      if (existing) return json({ job: publicJob(existing), replayed: true }, 200, responseHeaders);
+    }
     const payload = await readJson(context.request, 16 * 1024 * 1024);
     if (payload.confirm_paid !== true) throw new Error('提交付费任务前必须明确确认费用。');
+    await consumeRateLimit(context.env, session.id);
     const { apiKey, region } = credentials(context.request);
     if (payload.provider === 'runninghub') {
       const workflowId = String(payload.workflow_id || '').trim();
@@ -17,22 +37,28 @@ export async function onRequestPost(context) {
         addMetadata: true,
       });
       if (!data?.taskId) throw new Error('RunningHub 响应未返回任务 ID，未自动重试以避免重复扣费。');
-      return json({ job: {
+      const job = {
         id: String(data.taskId), provider: 'runninghub', model: 'RunningHub Workflow',
         status: String(data.taskStatus || 'queued').toLowerCase(), workflow_id: workflowId,
         workflow_preset: String(payload.workflow_preset || 'custom'),
         input_mode: payload.uploaded_file_name ? 'first_frame' : 'text', created_at: Math.floor(Date.now() / 1000),
-      } }, 202);
+        owner: session.id, idempotency_key: idempotencyKey,
+      };
+      await saveJob(context.env, job);
+      return json({ job: publicJob(job), replayed: false }, 202, responseHeaders);
     }
     if (payload.provider !== 'minimax') return json({ error: '当前站内真实生成支持 MiniMax H3 和 RunningHub 工作流。' }, 501);
     const duration = Math.max(4, Math.min(15, Number(payload.duration || 10)));
     const requestBody = buildPayload(payload.prompt, duration, String(payload.ratio || '16:9'), payload.first_frame_image || null);
     const result = await minimaxRequest('POST', '/v2/video_generation', apiKey, region, requestBody);
     if (!result.task_id) throw new Error('MiniMax 响应未返回任务 ID，未自动重试以避免重复扣费。');
-    return json({ job: {
+    const job = {
       id: String(result.task_id), provider: 'minimax', model: 'MiniMax-H3', status: 'queued', duration,
       ratio: requestBody.ratio, input_mode: payload.first_frame_image ? 'first_frame' : 'text', created_at: Math.floor(Date.now() / 1000),
-    } }, 202);
+      owner: session.id, idempotency_key: idempotencyKey,
+    };
+    await saveJob(context.env, job);
+    return json({ job: publicJob(job), replayed: false }, 202, responseHeaders);
   } catch (error) {
     return errorResponse(error);
   }

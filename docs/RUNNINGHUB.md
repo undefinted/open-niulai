@@ -15,10 +15,12 @@ The default prompt field is `text`; the default image field is `image`. Change t
 
 ## Security and billing
 
-- The API Key and non-secret workflow mapping are kept in the current browser tab's `sessionStorage`.
+- The API Key is kept in the current browser tab's `sessionStorage`. Non-secret workflow mappings and the latest 20 job summaries use browser `localStorage` so a user can resume after reloading.
 - The key is sent only to same-origin Cloudflare Pages Functions and then to RunningHub over HTTPS.
 - Keys, workflow passwords, and uploaded resources are not committed to GitHub.
 - Each task requires an explicit charge confirmation.
+- Paid creation requests carry an idempotency key, are rate-limited, and are never automatically retried after an uncertain provider response.
+- Production stores signed anonymous job metadata for up to seven days; it does not store the API Key or workflow access password.
 - Output links may expire according to RunningHub policy; production deployments should copy accepted results to controlled object storage.
 
 ## API routes

@@ -1,6 +1,15 @@
 const BASE_URL = 'https://www.runninghub.ai';
 const VIDEO_TYPES = new Set(['mp4', 'webm', 'mov', 'm4v']);
 
+function httpsUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 function assertKey(apiKey) {
   if (!apiKey || apiKey.length < 12) throw new Error('请先连接有效的 RunningHub API Key。');
 }
@@ -30,7 +39,7 @@ export function buildNodeInfo(payload, uploadedFileName = null) {
 export function normalizeOutputs(data) {
   if (Array.isArray(data)) {
     const outputs = data.map(item => ({
-      url: item.fileUrl || item.url || null,
+      url: httpsUrl(item.fileUrl || item.url),
       type: String(item.fileType || item.outputType || '').toLowerCase(),
       node_id: item.nodeId == null ? null : String(item.nodeId),
     })).filter(item => item.url);

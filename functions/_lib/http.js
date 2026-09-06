@@ -1,9 +1,24 @@
-export function json(value, status = 200) {
+export class HttpError extends Error {
+  constructor(message, status = 400, code = 'bad_request') {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+export function requestId(request) {
+  return request?.headers?.get('CF-Ray') || crypto.randomUUID();
+}
+
+export function json(value, status = 200, extraHeaders = {}) {
   return Response.json(value, {
     status,
     headers: {
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+      ...extraHeaders,
     },
   });
 }
@@ -18,5 +33,7 @@ export async function readJson(request, maxBytes = 64 * 1024) {
 
 export function errorResponse(error, status = 400) {
   const message = error instanceof Error ? error.message : '请求失败。';
-  return json({ error: message }, status);
+  const resolvedStatus = error instanceof HttpError ? error.status : status;
+  const code = error instanceof HttpError ? error.code : 'bad_request';
+  return json({ error: message, code }, resolvedStatus);
 }

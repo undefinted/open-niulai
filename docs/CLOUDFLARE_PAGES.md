@@ -2,6 +2,8 @@
 
 The public application is designed to run on Cloudflare Pages with Pages Functions. The Tencent Cloud CVM remains an independent cloud-computing lab deployment.
 
+Current Pages deployment: `https://open-niulai.pages.dev/`. The custom domain remains separate from a successful Pages deployment and is ready only after its DNS and certificate validation finish.
+
 ## Git deployment settings
 
 - Repository: `undefinted/open-niulai`
@@ -15,7 +17,7 @@ No model API key is required in the Cloudflare project settings. A visitor's Run
 
 ## Production bindings
 
-Create and bind two Cloudflare KV namespaces:
+Create and bind two Cloudflare KV namespaces. Their non-secret namespace IDs live in `wrangler.jsonc` so direct deployments are reproducible:
 
 - `JOBS`: seven-day anonymous task metadata, ownership checks, and best-effort duplicate submission protection.
 - `RATE_LIMITS`: hourly paid-task submission counters.

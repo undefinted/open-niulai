@@ -2,5 +2,18 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "open-niulai",
   "compatibility_date": "2026-08-28",
-  "pages_build_output_dir": "dist"
+  "pages_build_output_dir": "dist",
+  "vars": {
+    "PAID_JOB_LIMIT_PER_HOUR": "6"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "JOBS",
+      "id": "b6a96d203d624d9db7b019e39a1ca923"
+    },
+    {
+      "binding": "RATE_LIMITS",
+      "id": "c59b8bf91a18479c8241cd5c2ef3b939"
+    }
+  ]
 }

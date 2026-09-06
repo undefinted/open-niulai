@@ -15,7 +15,7 @@ Open NiuLai 0.7.0 is designed for a limited public beta using a BYOK model: crea
 
 Create two KV namespaces and bind them as `JOBS` and `RATE_LIMITS`. Add `SESSION_SECRET` with `wrangler pages secret put SESSION_SECRET`; use at least 32 random bytes. Optionally set `PAID_JOB_LIMIT_PER_HOUR`, which defaults to 6.
 
-The endpoint `/api/health` reports `production_ready: true` only when HTTPS, signed sessions, job storage, and rate limiting are all active. Never add namespace IDs or secrets to a public example file.
+The endpoint `/api/health` reports `production_ready: true` only when HTTPS, signed sessions, job storage, and rate limiting are all active. KV namespace IDs are non-secret deployment identifiers and may live in `wrangler.jsonc`; API tokens and `SESSION_SECRET` must never be committed.
 
 ## Honest limitations before charging users
 

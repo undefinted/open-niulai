@@ -5,9 +5,9 @@
 
 > 万物皆可来。输入一个想法，得到一套能制作、能发布的原创《X来》短片方案。
 
-**Cloudflare 正式预览：** [https://open-niulai.pages.dev/](https://open-niulai.pages.dev/)
+**正式站点：** [https://myyuanlai.xyz/](https://myyuanlai.xyz/)
 
-**自定义域名（等待 DNS 生效）：** [https://myyuanlai.xyz/](https://myyuanlai.xyz/)
+**Cloudflare Pages 备用地址：** [https://open-niulai.pages.dev/](https://open-niulai.pages.dev/)
 
 **腾讯云实验环境：** [http://43.138.0.110/](http://43.138.0.110/)
 

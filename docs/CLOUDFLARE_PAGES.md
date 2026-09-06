@@ -2,7 +2,7 @@
 
 The public application is designed to run on Cloudflare Pages with Pages Functions. The Tencent Cloud CVM remains an independent cloud-computing lab deployment.
 
-Current Pages deployment: `https://open-niulai.pages.dev/`. The custom domain remains separate from a successful Pages deployment and is ready only after its DNS and certificate validation finish.
+Production domain: `https://myyuanlai.xyz/`. Pages fallback: `https://open-niulai.pages.dev/`. Both endpoints report the same application version and production readiness checks.
 
 ## Git deployment settings
 

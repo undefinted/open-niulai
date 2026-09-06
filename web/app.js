@@ -10,6 +10,8 @@ const activePolls = new Map();
 const connectionKey = provider => `open-niulai:${provider}:connection`;
 const workflowConfigKey = preset => `open-niulai:runninghub:workflow:${preset}`;
 const jobHistoryKey = 'open-niulai:video-jobs';
+const creatorDraftKey = 'open-niulai:creator-draft';
+const packDraftKey = 'open-niulai:last-pack';
 const workflowPresets = {
   'minimax-h3': {name:'MiniMax H3', badge:'快速出片', description:'适合文生视频、首帧引导和带声音的短片工作流。'},
   'seedance': {name:'Seedance', badge:'高质量', description:'适合多参考素材、角色一致性和视频编辑工作流。'},
@@ -103,8 +105,9 @@ function copyButton(text) {
   return `<button class="copy" type="button" data-copy="${encodeURIComponent(text)}" title="复制" aria-label="复制">⧉</button>`;
 }
 
-function render(pack) {
+function render(pack, {scroll = true} = {}) {
   currentPack = pack;
+  localStorage.setItem(packDraftKey, JSON.stringify(pack));
   document.querySelector('#result-title').textContent = pack.title;
   document.querySelector('#result-hook').textContent = pack.hook;
   document.querySelector('#tab-story').innerHTML = `<div class="story-grid">${pack.script.map((beat, index) => `
@@ -115,7 +118,7 @@ function render(pack) {
     <article class="prompt-card">${copyButton(text)}<span>图像提示词</span><h3>${visualLabels[key] || key}</h3><p>${escapeHtml(text)}</p></article>`).join('')}</div>`;
 
   const shot = pack.video_shots[0];
-  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 内容已就绪</span><h3 id="generation-title">直接从这里生成视频</h3><p id="generation-account-note">生成任务统一由 RunningHub 执行，并使用你的 RunningHub 账户额度。</p></div><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">未上传首帧：文本直出</b></label><label class="model-select"><span>第 3 步 · 视频工作流</span><select id="video-workflow"><option value="minimax-h3">MiniMax H3 · 快速出片</option><option value="seedance">Seedance · 高质量</option><option value="custom">自定义 RunningHub 工作流</option></select></label><div id="generation-action"></div><div id="workflow-summary" class="workflow-summary"></div><details id="workflow-config" class="workflow-config"><summary>工作流绑定与高级设置</summary><div class="advanced-workflow"><div><span class="provider-badge">仅需绑定一次</span><h4 id="workflow-config-title">绑定 RunningHub 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="从 RunningHub API 调用页复制"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选，不保存）<input id="rh-access-password" type="password" autocomplete="off"></label><p>工作流配置保存在当前浏览器；API Key 只保留到标签页关闭，访问密码不保存。</p></div></details><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>统一生成</strong><span>Open NiuLai 负责脚本、分镜和提示词，RunningHub 负责 MiniMax H3、Seedance 与自定义工作流的算力和计费。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
+  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 内容已就绪</span><h3 id="generation-title">直接从这里生成视频</h3><p id="generation-account-note">生成任务统一由 RunningHub 执行，并使用你的 RunningHub 账户额度。</p></div><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">未上传首帧：文本直出</b></label><label class="model-select"><span>第 3 步 · 视频工作流</span><select id="video-workflow"><option value="minimax-h3">MiniMax H3 · 快速出片</option><option value="seedance">Seedance · 高质量</option><option value="custom">自定义 RunningHub 工作流</option></select></label><div id="generation-action"></div><div id="workflow-summary" class="workflow-summary"></div><ol id="generation-readiness" class="generation-readiness" aria-label="生成准备状态"></ol><details id="workflow-config" class="workflow-config"><summary>工作流绑定与高级设置</summary><div class="advanced-workflow"><div><span class="provider-badge">仅需绑定一次</span><h4 id="workflow-config-title">绑定 RunningHub 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="从 RunningHub API 调用页复制"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选，不保存）<input id="rh-access-password" type="password" autocomplete="off"></label><p>工作流配置保存在当前浏览器；API Key 只保留到标签页关闭，访问密码不保存。</p></div></details><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>统一生成</strong><span>Open NiuLai 负责脚本、分镜和提示词，RunningHub 负责 MiniMax H3、Seedance 与自定义工作流的算力和计费。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
     <div><dt>镜头</dt><dd>${escapeHtml(shot.camera)}</dd></div><div><dt>台词</dt><dd>${escapeHtml(shot.voiceover)}</dd></div><div><dt>避免</dt><dd>${escapeHtml(shot.negative_prompt)}</dd></div>
   </dl></aside></div><div class="result-player"><video controls muted loop playsinline poster="/demo/mao-first-frame.png"><source src="/demo/mao-lai-svd-captioned.mp4" type="video/mp4"></video><p><strong>参考样片</strong><br>当前播放的是本地 SVD 验证样片，不是本次输入即时生成的成片。</p></div></div>`;
   loadProviders().then(() => { updateWorkflowPreset(); updateGenerationStudio(); }).catch(error => notify(error.message));
@@ -130,8 +133,35 @@ function render(pack) {
   document.querySelectorAll('.tabs button, .tab-view').forEach(node => node.classList.remove('active'));
   document.querySelector('[data-tab="video"]').classList.add('active');
   document.querySelector('#tab-video').classList.add('active');
-  requestAnimationFrame(() => document.querySelector('.generation-studio').scrollIntoView({behavior:'smooth', block:'start'}));
+  if (scroll) requestAnimationFrame(() => document.querySelector('.generation-studio').scrollIntoView({behavior:'smooth', block:'start'}));
 }
+
+function saveCreatorDraft() {
+  const values = Object.fromEntries(new FormData(form));
+  localStorage.setItem(creatorDraftKey, JSON.stringify(values));
+}
+
+function restoreCreatorDraft() {
+  try {
+    const draft = JSON.parse(localStorage.getItem(creatorDraftKey) || 'null');
+    if (draft) Object.entries(draft).forEach(([name, value]) => {
+      const field = form.elements.namedItem(name);
+      if (field && typeof value === 'string') field.value = value;
+    });
+    const pack = JSON.parse(localStorage.getItem(packDraftKey) || 'null');
+    if (pack?.title && Array.isArray(pack.script) && Array.isArray(pack.video_shots)) render(pack, {scroll:false});
+  } catch {
+    localStorage.removeItem(creatorDraftKey);
+    localStorage.removeItem(packDraftKey);
+  }
+}
+
+let draftTimer = null;
+form.addEventListener('input', () => {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(saveCreatorDraft, 250);
+});
+form.addEventListener('change', saveCreatorDraft);
 
 form.addEventListener('submit', async event => {
   event.preventDefault();
@@ -144,6 +174,7 @@ form.addEventListener('submit', async event => {
     const response = await fetch('/api/packs', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || '生成失败');
+    saveCreatorDraft();
     render(result.pack);
   } catch (error) {
     notify(error.message);
@@ -208,17 +239,48 @@ async function loadProviders() {
   updateGenerationStudio();
 }
 
+function currentWorkflowConfig() {
+  const stored = getWorkflowConfig(selectedWorkflow);
+  const value = id => document.querySelector(id)?.value.trim();
+  return {
+    workflow_id:value('#rh-workflow-id') || stored.workflow_id || '',
+    prompt_node_id:value('#rh-prompt-node') || stored.prompt_node_id || '',
+    prompt_field:value('#rh-prompt-field') || stored.prompt_field || 'text',
+    image_node_id:value('#rh-image-node') || stored.image_node_id || '',
+    image_field:value('#rh-image-field') || stored.image_field || 'image',
+  };
+}
+
+function saveVisibleWorkflowConfig() {
+  if (!document.querySelector('#rh-workflow-id')) return;
+  saveWorkflowConfig(selectedWorkflow, currentWorkflowConfig());
+}
+
 function updateGenerationStudio() {
   const action = document.querySelector('#generation-action');
   if (!action) return;
   const item = providerState.providers.find(provider => provider.id === 'runninghub');
   if (!item) return;
   const connected = providerState.connected.includes(item.id);
+  const config = currentWorkflowConfig();
+  const serviceReady = providerState.secure_context && providerState.generation_ready !== false;
+  const workflowReady = Boolean(config.workflow_id && config.prompt_node_id);
+  const inputReady = !firstFrameDataUrl || Boolean(config.image_node_id);
   const note = document.querySelector('#generation-account-note');
   note.textContent = `${workflowPresets[selectedWorkflow].name} 将在 RunningHub 中运行，费用从你的 RunningHub 账户扣除。`;
-  if (!providerState.secure_context) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>配置 HTTPS 后连接</span><b>→</b></button>';
+  const checks = [
+    {done:true, label:'制作内容', detail:'脚本与视频提示词已生成'},
+    {done:serviceReady && connected, label:'模型账户', detail:!serviceReady ? '服务尚未开放付费任务' : connected ? 'RunningHub 已临时连接' : '需要连接 RunningHub'},
+    {done:workflowReady, label:'工作流绑定', detail:workflowReady ? `${workflowPresets[selectedWorkflow].name} 已就绪` : '填写工作流 ID 与提示词节点'},
+    {done:inputReady, label:'画面输入', detail:firstFrameDataUrl ? (inputReady ? '首帧与图片节点已就绪' : '还需填写图片节点 ID') : '文本直出，无需图片节点'},
+  ];
+  const firstPending = checks.findIndex(check => !check.done);
+  document.querySelector('#generation-readiness').innerHTML = checks.map((check, index) => `<li class="${check.done ? 'done' : index === firstPending ? 'current' : 'waiting'}"><i>${check.done ? '✓' : index + 1}</i><span><strong>${escapeHtml(check.label)}</strong><small>${escapeHtml(check.detail)}</small></span></li>`).join('');
+  if (!providerState.secure_context) action.innerHTML = '<button class="primary" type="button" disabled><span>当前连接不安全</span><b>·</b></button>';
   else if (providerState.generation_ready === false) action.innerHTML = '<button class="primary" type="button" disabled><span>生成服务配置中</span><b>·</b></button>';
-  else if (!connected) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>连接 RunningHub</span><b>→</b></button>';
+  else if (!connected) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>下一步：连接账户</span><b>→</b></button>';
+  else if (!workflowReady) action.innerHTML = '<button class="primary" type="button" data-open-workflow-config><span>下一步：绑定工作流</span><b>→</b></button>';
+  else if (!inputReady) action.innerHTML = '<button class="primary" type="button" data-open-workflow-config><span>下一步：填写图片节点</span><b>→</b></button>';
   else action.innerHTML = '<button class="primary" type="button" data-submit-runninghub><span>确认费用并生成</span><b>→</b></button>';
 }
 
@@ -254,18 +316,60 @@ document.addEventListener('change', event => {
   }
   if (event.target.id === 'first-frame') {
     const file = event.target.files[0];
-    if (!file) { firstFrameDataUrl = null; return; }
+    if (!file) { firstFrameDataUrl = null; document.querySelector('#frame-name').textContent = '未上传首帧：文本直出'; updateGenerationStudio(); return; }
     if (file.size > 10 * 1024 * 1024) { notify('首帧图片不能超过 10 MB'); event.target.value = ''; return; }
     const reader = new FileReader();
-    reader.onload = () => { firstFrameDataUrl = reader.result; document.querySelector('#frame-name').textContent = `${file.name} · 首帧引导`; };
+    reader.onload = () => { firstFrameDataUrl = reader.result; document.querySelector('#frame-name').textContent = `${file.name} · 首帧引导`; updateGenerationStudio(); };
     reader.readAsDataURL(file);
+  }
+});
+document.addEventListener('input', event => {
+  if (event.target.closest('#workflow-config') && event.target.id !== 'rh-access-password') {
+    saveVisibleWorkflowConfig();
+    updateGenerationStudio();
   }
 });
 document.addEventListener('click', event => {
   if (event.target.closest('[data-view-sample]')) document.querySelector('.result-player')?.scrollIntoView({behavior:'smooth', block:'center'});
+  if (event.target.closest('[data-open-workflow-config]')) {
+    const details = document.querySelector('#workflow-config');
+    details.open = true;
+    details.scrollIntoView({behavior:'smooth', block:'center'});
+    setTimeout(() => (!document.querySelector('#rh-workflow-id').value ? document.querySelector('#rh-workflow-id') : document.querySelector('#rh-prompt-node')).focus(), 350);
+  }
   if (event.target.closest('[data-submit-runninghub]')) submitRunningHub();
   const resume = event.target.closest('[data-resume-job]');
   if (resume) resumeJob(decodeURIComponent(resume.dataset.resumeJob), resume.dataset.provider, resume);
+});
+
+document.addEventListener('submit', async event => {
+  const feedbackForm = event.target.closest('.feedback-form');
+  if (!feedbackForm) return;
+  event.preventDefault();
+  const button = feedbackForm.querySelector('button[type="submit"]');
+  const data = new FormData(feedbackForm);
+  button.disabled = true;
+  button.textContent = '提交中';
+  try {
+    const response = await fetch('/api/feedback', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        job_id:decodeURIComponent(feedbackForm.dataset.jobId),
+        provider:feedbackForm.dataset.provider,
+        rating:Number(data.get('rating')),
+        reason:data.get('reason'),
+        comment:data.get('comment'),
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || '评价提交失败');
+    feedbackForm.outerHTML = '<p class="feedback-thanks"><strong>已记录</strong><span>这条评价会用于改进提示词和工作流选择。</span></p>';
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = '提交评价';
+    notify(error.message);
+  }
 });
 
 document.querySelector('#clear-jobs').addEventListener('click', () => {
@@ -365,7 +469,7 @@ function showJob(job) {
   }
   if (job.video_url) {
     const providerName = job.provider === 'runninghub' ? 'RunningHub' : 'MiniMax';
-    document.querySelector('.result-player').innerHTML = `<video controls autoplay playsinline><source src="${escapeHtml(job.video_url)}" type="video/mp4"></video><p><strong>本次生成结果</strong><br>${providerName} 已返回真实生成结果，可直接播放或下载。</p><a class="secondary action-link" href="${escapeHtml(job.video_url)}" target="_blank" rel="noreferrer">下载或打开成片</a>`;
+    document.querySelector('.result-player').innerHTML = `<video controls autoplay playsinline><source src="${escapeHtml(job.video_url)}" type="video/mp4"></video><div class="result-details"><p><strong>本次生成结果</strong><br>${providerName} 已返回真实生成结果，可直接播放或下载。</p><a class="secondary action-link" href="${escapeHtml(job.video_url)}" target="_blank" rel="noreferrer">下载或打开成片</a><form class="feedback-form" data-job-id="${encodeURIComponent(job.id)}" data-provider="${escapeHtml(job.provider)}"><fieldset><legend>这支成片满意吗？</legend><div class="rating-options">${[1,2,3,4,5].map(value => `<label><input type="radio" name="rating" value="${value}" ${value === 4 ? 'checked' : ''}><span>${value}</span></label>`).join('')}</div></fieldset><label>主要问题<select name="reason"><option value="satisfied">整体满意</option><option value="prompt_fit">与创意不符</option><option value="quality">画面质量</option><option value="consistency">角色不一致</option><option value="speed">生成太慢</option><option value="other">其他</option></select></label><label>补充说明<input name="comment" maxlength="300" placeholder="可选，请勿填写联系方式"></label><button class="secondary" type="submit">提交评价</button></form></div>`;
   }
 }
 
@@ -416,5 +520,6 @@ function resumeJob(jobId, provider, trigger) {
   pollJob(jobId, provider, trigger);
 }
 
+restoreCreatorDraft();
 renderJobHistory();
 initializeService();

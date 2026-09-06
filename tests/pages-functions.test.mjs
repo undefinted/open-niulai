@@ -7,6 +7,7 @@ import { buildPayload } from '../functions/_lib/minimax.js';
 import { buildNodeInfo, normalizeOutputs } from '../functions/_lib/runninghub.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, getSession, validateIdempotencyKey } from '../functions/_lib/session.js';
 import { onRequestPost as createVideoJob } from '../functions/api/video-jobs/index.js';
+import { onRequestPost as submitFeedback } from '../functions/api/feedback.js';
 
 test('Pages pack builder preserves the web contract', () => {
   const pack = createPack({ subject: '猫', prompt: '一只加班的猫试图逃离办公室', duration: 10, template: 'ad_hook' });
@@ -115,6 +116,37 @@ test('public UI includes recovery history and legal disclosures', () => {
   assert.match(html, /terms\.html/);
   assert.match(source, /Idempotency-Key/);
   assert.match(source, /open-niulai:video-jobs/);
+  assert.match(source, /open-niulai:creator-draft/);
+  assert.match(source, /generation-readiness/);
+  assert.match(source, /feedback-form/);
+});
+
+test('feedback is accepted only for a completed job owned by the signed session', async () => {
+  const values = new Map();
+  const kv = {
+    get: async (key, type) => {
+      const value = values.get(key);
+      return type === 'json' && value ? JSON.parse(value) : value;
+    },
+    put: async (key, value) => values.set(key, value),
+  };
+  const env = { SESSION_SECRET: 'a-test-secret-that-is-long-enough', JOBS: kv, RATE_LIMITS: kv };
+  const sessionResponse = await ensureSession(new Request('http://127.0.0.1/api/session'), env);
+  await kv.put('job:runninghub:job-1', JSON.stringify({
+    id:'job-1', provider:'runninghub', owner:sessionResponse.id, status:'succeeded', video_url:'https://example.com/result.mp4', workflow_preset:'seedance',
+  }));
+  const response = await submitFeedback({
+    request:new Request('http://127.0.0.1/api/feedback', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', Cookie:sessionResponse.cookie.split(';')[0]},
+      body:JSON.stringify({job_id:'job-1', provider:'runninghub', rating:4, reason:'quality', comment:'动作略显僵硬'}),
+    }),
+    env,
+  });
+  assert.equal(response.status, 201);
+  const stored = [...values.entries()].find(([key]) => key.startsWith(`feedback:${sessionResponse.id}:`));
+  assert.ok(stored);
+  assert.doesNotMatch(stored[1], /API Key|test-secret/);
 });
 
 test('a repeated paid request replays the stored RunningHub job without a second provider call', async () => {

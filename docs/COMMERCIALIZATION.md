@@ -1,6 +1,6 @@
 # Commercial MVP checklist
 
-Open NiuLai 0.7.0 is designed for a limited public beta using a BYOK model: creators connect their own RunningHub account, confirm each paid submission, and consume that account's quota. Open NiuLai does not resell model credits.
+Open NiuLai 0.8.0 is designed for a limited public beta using a BYOK model: creators connect their own RunningHub account, confirm each paid submission, and consume that account's quota. Open NiuLai does not resell model credits.
 
 ## Implemented
 
@@ -10,6 +10,9 @@ Open NiuLai 0.7.0 is designed for a limited public beta using a BYOK model: crea
 - Idempotency keys on paid submissions and no automatic retry of provider task creation.
 - Per-workspace paid-task rate limits, HTTPS detection, security headers, privacy notice, and beta terms.
 - Honest sample labeling: the bundled SVD video proves one completed inference and is not presented as the current user's output.
+- A visible readiness checklist points to the next missing account, workflow, or image-node step instead of failing only at submission time.
+- Creator drafts and the most recent production pack survive refreshes in local browser storage.
+- Completed jobs accept an anonymous 1-5 score and issue category; feedback is ownership-checked and expires after 30 days.
 
 ## Required Cloudflare production bindings
 

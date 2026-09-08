@@ -105,12 +105,27 @@ function copyButton(text) {
   return `<button class="copy" type="button" data-copy="${encodeURIComponent(text)}" title="复制" aria-label="复制">⧉</button>`;
 }
 
+function qualityMarkup(report, compact = false) {
+  if (!report) return '<section class="quality-gate blocked"><div><span class="provider-badge">质量门禁</span><h3>需要重新生成制作包</h3><p>当前草稿没有工程验证记录。</p></div></section>';
+  const labels = {
+    constraint_coverage_percent:'约束覆盖', required_field_completeness_percent:'字段完整',
+    timeline_integrity_percent:'时间线', production_readiness_percent:'生成准备',
+  };
+  const failures = report.checks.filter(item => item.status !== 'pass');
+  return `<section class="quality-gate ${escapeHtml(report.status)} ${compact ? 'compact' : ''}">
+    <div class="quality-heading"><div><span class="provider-badge">AI 输出质量门禁</span><h3>规则验证 ${escapeHtml(report.score)}/100 · ${report.status === 'passed' ? '通过' : '已阻断'}</h3><p>${escapeHtml(report.score_note)}</p></div><strong>${escapeHtml(report.summary.passed)}/${escapeHtml(report.summary.total)}</strong></div>
+    <div class="quality-metrics">${Object.entries(report.metrics).map(([key, value]) => `<div><b>${escapeHtml(value)}%</b><span>${escapeHtml(labels[key] || key)}</span></div>`).join('')}</div>
+    ${compact ? '' : `<details class="quality-evidence"><summary>查看 ${escapeHtml(report.checks.length)} 项验证证据</summary><div>${report.checks.map(item => `<p class="${escapeHtml(item.status)}"><b>${item.status === 'pass' ? '通过' : '失败'} · ${escapeHtml(item.label)}</b><span>${escapeHtml(item.evidence)}</span>${item.remediation ? `<small>${escapeHtml(item.remediation)}</small>` : ''}</p>`).join('')}</div></details>`}
+    ${failures.length && compact ? `<p class="quality-blocker">${escapeHtml(failures[0].remediation)}</p>` : ''}
+  </section>`;
+}
+
 function render(pack, {scroll = true} = {}) {
   currentPack = pack;
   localStorage.setItem(packDraftKey, JSON.stringify(pack));
   document.querySelector('#result-title').textContent = pack.title;
   document.querySelector('#result-hook').textContent = pack.hook;
-  document.querySelector('#tab-story').innerHTML = `<div class="story-grid">${pack.script.map((beat, index) => `
+  document.querySelector('#tab-story').innerHTML = `${qualityMarkup(pack.quality_report)}<div class="story-grid">${pack.script.map((beat, index) => `
     <article class="beat"><time>${escapeHtml(beat.time)} · 镜头 ${String(index + 1).padStart(2, '0')}</time><h3>${escapeHtml(beat.subtitle)}</h3><p>${escapeHtml(beat.action)}</p></article>`).join('')}</div>`;
 
   const visualLabels = {poster_scam:'宣传海报', broken_footage_still:'崩坏首帧', character_reference:'角色设定', meme_reaction:'反应特写'};
@@ -121,6 +136,7 @@ function render(pack, {scroll = true} = {}) {
   document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 内容已就绪</span><h3 id="generation-title">直接从这里生成视频</h3><p id="generation-account-note">生成任务统一由 RunningHub 执行，并使用你的 RunningHub 账户额度。</p></div><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">未上传首帧：文本直出</b></label><label class="model-select"><span>第 3 步 · 视频工作流</span><select id="video-workflow"><option value="minimax-h3">MiniMax H3 · 快速出片</option><option value="seedance">Seedance · 高质量</option><option value="custom">自定义 RunningHub 工作流</option></select></label><div id="generation-action"></div><div id="workflow-summary" class="workflow-summary"></div><ol id="generation-readiness" class="generation-readiness" aria-label="生成准备状态"></ol><details id="workflow-config" class="workflow-config"><summary>工作流绑定与高级设置</summary><div class="advanced-workflow"><div><span class="provider-badge">仅需绑定一次</span><h4 id="workflow-config-title">绑定 RunningHub 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="从 RunningHub API 调用页复制"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选，不保存）<input id="rh-access-password" type="password" autocomplete="off"></label><p>工作流配置保存在当前浏览器；API Key 只保留到标签页关闭，访问密码不保存。</p></div></details><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>统一生成</strong><span>Open NiuLai 负责脚本、分镜和提示词，RunningHub 负责 MiniMax H3、Seedance 与自定义工作流的算力和计费。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
     <div><dt>镜头</dt><dd>${escapeHtml(shot.camera)}</dd></div><div><dt>台词</dt><dd>${escapeHtml(shot.voiceover)}</dd></div><div><dt>避免</dt><dd>${escapeHtml(shot.negative_prompt)}</dd></div>
   </dl></aside></div><div class="result-player"><video controls muted loop playsinline poster="/demo/mao-first-frame.png"><source src="/demo/mao-lai-svd-captioned.mp4" type="video/mp4"></video><p><strong>参考样片</strong><br>当前播放的是本地 SVD 验证样片，不是本次输入即时生成的成片。</p></div></div>`;
+  document.querySelector('#tab-video').insertAdjacentHTML('afterbegin', qualityMarkup(pack.quality_report, true));
   loadProviders().then(() => { updateWorkflowPreset(); updateGenerationStudio(); }).catch(error => notify(error.message));
 
   const copy = pack.publishing_copy;
@@ -264,19 +280,21 @@ function updateGenerationStudio() {
   const connected = providerState.connected.includes(item.id);
   const config = currentWorkflowConfig();
   const serviceReady = providerState.secure_context && providerState.generation_ready !== false;
+  const qualityReady = currentPack?.quality_report?.status === 'passed';
   const workflowReady = Boolean(config.workflow_id && config.prompt_node_id);
   const inputReady = !firstFrameDataUrl || Boolean(config.image_node_id);
   const note = document.querySelector('#generation-account-note');
   note.textContent = `${workflowPresets[selectedWorkflow].name} 将在 RunningHub 中运行，费用从你的 RunningHub 账户扣除。`;
   const checks = [
-    {done:true, label:'制作内容', detail:'脚本与视频提示词已生成'},
+    {done:qualityReady, label:'质量门禁', detail:qualityReady ? `规则验证 ${currentPack.quality_report.score}/100` : '请重新生成并修正失败项'},
     {done:serviceReady && connected, label:'模型账户', detail:!serviceReady ? '服务尚未开放付费任务' : connected ? 'RunningHub 已临时连接' : '需要连接 RunningHub'},
     {done:workflowReady, label:'工作流绑定', detail:workflowReady ? `${workflowPresets[selectedWorkflow].name} 已就绪` : '填写工作流 ID 与提示词节点'},
     {done:inputReady, label:'画面输入', detail:firstFrameDataUrl ? (inputReady ? '首帧与图片节点已就绪' : '还需填写图片节点 ID') : '文本直出，无需图片节点'},
   ];
   const firstPending = checks.findIndex(check => !check.done);
   document.querySelector('#generation-readiness').innerHTML = checks.map((check, index) => `<li class="${check.done ? 'done' : index === firstPending ? 'current' : 'waiting'}"><i>${check.done ? '✓' : index + 1}</i><span><strong>${escapeHtml(check.label)}</strong><small>${escapeHtml(check.detail)}</small></span></li>`).join('');
-  if (!providerState.secure_context) action.innerHTML = '<button class="primary" type="button" disabled><span>当前连接不安全</span><b>·</b></button>';
+  if (!qualityReady) action.innerHTML = '<button class="primary" type="button" disabled><span>质量门禁未通过</span><b>·</b></button>';
+  else if (!providerState.secure_context) action.innerHTML = '<button class="primary" type="button" disabled><span>当前连接不安全</span><b>·</b></button>';
   else if (providerState.generation_ready === false) action.innerHTML = '<button class="primary" type="button" disabled><span>生成服务配置中</span><b>·</b></button>';
   else if (!connected) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>下一步：连接账户</span><b>→</b></button>';
   else if (!workflowReady) action.innerHTML = '<button class="primary" type="button" data-open-workflow-config><span>下一步：绑定工作流</span><b>→</b></button>';
@@ -405,6 +423,7 @@ dialog.addEventListener('click', async event => {
 
 async function submitRunningHub() {
   if (!currentPack) return;
+  if (currentPack.quality_report?.status !== 'passed') { notify('质量门禁未通过，请重新生成并检查失败项'); return; }
   const workflowId = document.querySelector('#rh-workflow-id').value.trim();
   const promptNodeId = document.querySelector('#rh-prompt-node').value.trim();
   const imageNodeId = document.querySelector('#rh-image-node').value.trim();

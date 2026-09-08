@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { createPack } from '../functions/_lib/pack.js';
+import { evaluatePack } from '../functions/_lib/quality.js';
 import { buildPayload } from '../functions/_lib/minimax.js';
 import { buildNodeInfo, normalizeOutputs } from '../functions/_lib/runninghub.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, getSession, validateIdempotencyKey } from '../functions/_lib/session.js';
@@ -19,6 +20,33 @@ test('Pages pack builder preserves the web contract', () => {
 
 test('Pages pack builder rejects an empty prompt', () => {
   assert.throws(() => createPack({ subject: '猫', prompt: '' }), /一句话创意/);
+});
+
+test('quality gate records traceable evidence for a valid production pack', () => {
+  const pack = createPack({ subject: '猫', prompt: '一只加班的猫试图逃离办公室', required_line: '今天必须下班', duration: 10 });
+  const report = evaluatePack(pack);
+  assert.equal(report.status, 'passed');
+  assert.equal(report.score, 100);
+  assert.equal(report.summary.passed, 10);
+  assert.equal(report.metrics.constraint_coverage_percent, 100);
+  assert.match(report.score_note, /不代表成片审美质量/);
+});
+
+test('quality gate blocks a broken or incomplete storyboard timeline', () => {
+  const pack = createPack({ subject: '猫', prompt: '一只加班的猫试图逃离办公室', duration: 10 });
+  pack.script[1].time = '5-8s';
+  const report = evaluatePack(pack);
+  assert.equal(report.status, 'blocked');
+  assert.equal(report.checks.find(item => item.id === 'timeline_integrity').status, 'fail');
+  assert.match(report.checks.find(item => item.id === 'timeline_integrity').remediation, /连续覆盖/);
+});
+
+test('quality gate blocks drift from the user required line', () => {
+  const pack = createPack({ subject: '猫', prompt: '一只加班的猫试图逃离办公室', required_line: '今天必须下班', duration: 10 });
+  pack.script.forEach(item => { item.subtitle = '另一句台词'; });
+  const report = evaluatePack(pack);
+  assert.equal(report.status, 'blocked');
+  assert.equal(report.checks.find(item => item.id === 'required_line').status, 'fail');
 });
 
 test('MiniMax payload switches to adaptive for a first frame', () => {
@@ -119,6 +147,8 @@ test('public UI includes recovery history and legal disclosures', () => {
   assert.match(source, /open-niulai:creator-draft/);
   assert.match(source, /generation-readiness/);
   assert.match(source, /feedback-form/);
+  assert.match(source, /AI 输出质量门禁/);
+  assert.match(source, /质量门禁未通过/);
 });
 
 test('feedback is accepted only for a completed job owned by the signed session', async () => {

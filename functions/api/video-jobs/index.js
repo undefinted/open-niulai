@@ -33,7 +33,7 @@ export async function onRequestPost(context) {
         const nodeInfoList = buildAiAppNodeInfo(instance, payload, payload.uploaded_file_name || null);
         const data = instance.api_version === 'v2'
           ? await runningHubV2Json(`/openapi/v2/run/ai-app/${instance.webapp_id}`, apiKey, {
-            nodeInfoList, instanceType: 'default', usePersonalQueue: false,
+            nodeInfoList, instanceType: instance.instance_type, usePersonalQueue: false,
           })
           : await runningHubJson('/task/openapi/ai-app/run', apiKey, { webappId: instance.webapp_id, nodeInfoList });
         if (!data?.taskId) throw new Error('RunningHub AI 实例未返回任务 ID，未自动重试以避免重复扣费。');

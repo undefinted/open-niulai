@@ -37,6 +37,7 @@ function cleanInstance(raw, fallback = {}) {
   if (!/^[a-z0-9][a-z0-9-]{1,49}$/.test(id)) return null;
   const webappId = String(raw?.webapp_id || raw?.webappId || '').trim();
   const promptNodeId = String(raw?.prompt_node_id || raw?.promptNodeId || '').trim();
+  const requestedInstanceType = String(raw?.instance_type || raw?.instanceType || 'default').trim().toLowerCase();
   return {
     id,
     name: String(raw?.name || fallback.name || id).slice(0, 80),
@@ -47,6 +48,7 @@ function cleanInstance(raw, fallback = {}) {
     supports_image: raw?.supports_image ?? raw?.supportsImage ?? fallback.supports_image ?? false,
     configured: /^\d{6,30}$/.test(webappId) && Boolean(promptNodeId),
     api_version: String(raw?.api_version || raw?.apiVersion || 'legacy') === 'v2' ? 'v2' : 'legacy',
+    instance_type: ['default', 'plus', 'ultra'].includes(requestedInstanceType) ? requestedInstanceType : 'default',
     webapp_id: webappId,
     prompt_node_id: promptNodeId,
     prompt_field: String(raw?.prompt_field || raw?.promptField || 'text').trim(),
@@ -81,7 +83,7 @@ export function publicAiApp(instance) {
   const { webapp_id: _webappId, prompt_node_id: _promptNodeId, prompt_field: _promptField,
     image_node_id: _imageNodeId, image_field: _imageField, duration_node_id: _durationNodeId,
     duration_field: _durationField, ratio_node_id: _ratioNodeId, ratio_field: _ratioField,
-    fixed_fields: _fixedFields, api_version: _apiVersion, ...safe } = instance;
+    fixed_fields: _fixedFields, api_version: _apiVersion, instance_type: _instanceType, ...safe } = instance;
   return safe;
 }
 

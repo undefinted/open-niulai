@@ -315,6 +315,7 @@ test('RunningHub V2 AI instance uses the instance path and direct response contr
     SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv,
     RUNNINGHUB_AI_APPS:JSON.stringify([{
       id:'seedance', name:'Seedance 2.5 文生视频', apiVersion:'v2', webappId:'2085880920086765569',
+      instanceType:'plus',
       promptNodeId:'1', promptField:'prompt', durationNodeId:'1', durationField:'duration',
       ratioNodeId:'1', ratioField:'ratio', fixedFields:[
         {nodeId:'1', fieldName:'resolution', fieldValue:'720p'},
@@ -340,6 +341,7 @@ test('RunningHub V2 AI instance uses the instance path and direct response contr
     assert.equal(response.status, 202);
     assert.equal(result.job.api_version, 'v2');
     assert.match(providerRequest.url, /runninghub\.cn\/openapi\/v2\/run\/ai-app\/2085880920086765569$/);
+    assert.equal(providerRequest.body.instanceType, 'plus');
     assert.deepEqual(providerRequest.body.nodeInfoList, [
       {nodeId:'1', fieldName:'prompt', fieldValue:'A cat walks.'},
       {nodeId:'1', fieldName:'duration', fieldValue:'15'},

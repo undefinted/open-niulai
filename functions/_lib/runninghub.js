@@ -143,6 +143,7 @@ export function buildNodeInfo(payload, uploadedFileName = null) {
 
 export function normalizeOutputs(data) {
   if (data && typeof data === 'object' && Array.isArray(data.results)) {
+    const failedReason = data.failedReason && typeof data.failedReason === 'object' ? data.failedReason : {};
     const outputs = data.results.map(item => ({
       url: httpsUrl(item.url),
       type: String(item.outputType || '').toLowerCase(),
@@ -153,7 +154,9 @@ export function normalizeOutputs(data) {
     const status = raw === 'success' ? (video ? 'succeeded' : 'failed') : raw === 'failed' ? 'failed' : raw === 'queued' ? 'queued' : 'running';
     return {
       status, outputs, video_url: video?.url || null, output_type: video?.type || null,
-      error: raw === 'failed' ? (data.errorMessage || 'RunningHub AI 实例生成失败。') : raw === 'success' && !video ? 'AI 实例已完成，但没有返回视频文件。' : null,
+      error: raw === 'failed'
+        ? (data.errorMessage || failedReason.exception_message || failedReason.message || 'RunningHub AI 实例生成失败。')
+        : raw === 'success' && !video ? 'AI 实例已完成，但没有返回视频文件。' : null,
       usage: data.usage || null,
     };
   }
@@ -175,7 +178,14 @@ export function normalizeOutputs(data) {
   if (data && typeof data === 'object') {
     const raw = String(data.taskStatus || data.status || 'running').toLowerCase();
     const status = raw === 'success' ? 'succeeded' : raw === 'failed' ? 'failed' : raw === 'queued' ? 'queued' : 'running';
-    return { status, outputs: [], video_url: null, output_type: null };
+    const failedReason = data.failedReason && typeof data.failedReason === 'object' ? data.failedReason : {};
+    return {
+      status, outputs: [], video_url: null, output_type: null,
+      error: status === 'failed'
+        ? (data.errorMessage || failedReason.exception_message || failedReason.message || 'RunningHub AI 实例生成失败。')
+        : null,
+      usage: data.usage || null,
+    };
   }
   return { status: 'running', outputs: [], video_url: null, output_type: null };
 }
@@ -193,7 +203,7 @@ export async function runningHubJson(path, apiKey, body) {
   return result.data;
 }
 
-export async function runningHubV2Json(path, apiKey, body) {
+export async function runningHubV2Json(path, apiKey, body, { allowTaskFailure = false } = {}) {
   assertKey(apiKey);
   const response = await fetch(CN_V2_BASE_URL + path, {
     method: 'POST',
@@ -202,7 +212,7 @@ export async function runningHubV2Json(path, apiKey, body) {
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`RunningHub HTTP ${response.status}：${result.errorMessage || result.message || '请求失败'}`);
-  if (result.errorCode) throw new Error(`RunningHub ${result.errorCode}：${result.errorMessage || '请求失败'}`);
+  if (result.errorCode && !allowTaskFailure) throw new Error(`RunningHub ${result.errorCode}：${result.errorMessage || '请求失败'}`);
   return result;
 }
 

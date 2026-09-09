@@ -102,6 +102,14 @@ test('RunningHub V2 result normalization returns the generated video and usage',
   assert.equal(result.usage.consumeCoins, '10');
 });
 
+test('RunningHub V2 result normalization exposes the provider failure reason', () => {
+  const result = normalizeOutputs({
+    status:'FAILED', results:[], failedReason:{exception_message:'上游模型服务暂时不可用'},
+  });
+  assert.equal(result.status, 'failed');
+  assert.equal(result.error, '上游模型服务暂时不可用');
+});
+
 test('Creator UI defaults to RunningHub AI instances and keeps workflows advanced', () => {
   const source = readFileSync(new URL('../web/app.js', import.meta.url), 'utf8');
   assert.match(source, /MiniMax H3 成片实例/);

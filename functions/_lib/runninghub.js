@@ -176,13 +176,13 @@ export function normalizeOutputs(data) {
     };
   }
   if (data && typeof data === 'object') {
-    const raw = String(data.taskStatus || data.status || 'running').toLowerCase();
+    const raw = String(data.taskStatus || data.status || (data.errorCode ? 'failed' : 'running')).toLowerCase();
     const status = raw === 'success' ? 'succeeded' : raw === 'failed' ? 'failed' : raw === 'queued' ? 'queued' : 'running';
     const failedReason = data.failedReason && typeof data.failedReason === 'object' ? data.failedReason : {};
     return {
       status, outputs: [], video_url: null, output_type: null,
       error: status === 'failed'
-        ? (data.errorMessage || failedReason.exception_message || failedReason.message || 'RunningHub AI 实例生成失败。')
+        ? (data.errorMessage || failedReason.exception_message || failedReason.message || `RunningHub ${data.errorCode || '错误'}：AI 实例生成失败。`)
         : null,
       usage: data.usage || null,
     };

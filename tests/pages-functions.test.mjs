@@ -110,6 +110,12 @@ test('RunningHub V2 result normalization exposes the provider failure reason', (
   assert.equal(result.error, '上游模型服务暂时不可用');
 });
 
+test('RunningHub V2 query errors do not remain stuck in the running state', () => {
+  const result = normalizeOutputs({errorCode:'TASK_NOT_FOUND', errorMessage:'任务不存在'});
+  assert.equal(result.status, 'failed');
+  assert.equal(result.error, '任务不存在');
+});
+
 test('Creator UI defaults to RunningHub AI instances and keeps workflows advanced', () => {
   const source = readFileSync(new URL('../web/app.js', import.meta.url), 'utf8');
   assert.match(source, /MiniMax H3 成片实例/);

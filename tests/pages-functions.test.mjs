@@ -92,6 +92,16 @@ test('RunningHub output normalization rejects non-HTTPS result links', () => {
   assert.equal(result.video_url, null);
 });
 
+test('RunningHub V2 result normalization returns the generated video and usage', () => {
+  const result = normalizeOutputs({
+    status:'SUCCESS', usage:{consumeCoins:'10'},
+    results:[{url:'https://example.com/result.mp4', nodeId:'4', outputType:'mp4'}],
+  });
+  assert.equal(result.status, 'succeeded');
+  assert.equal(result.video_url, 'https://example.com/result.mp4');
+  assert.equal(result.usage.consumeCoins, '10');
+});
+
 test('Creator UI defaults to RunningHub AI instances and keeps workflows advanced', () => {
   const source = readFileSync(new URL('../web/app.js', import.meta.url), 'utf8');
   assert.match(source, /MiniMax H3 成片实例/);
@@ -271,6 +281,56 @@ test('RunningHub AI instance submits its hidden WebApp mapping', async () => {
     assert.equal(providerRequest.body.webappId, '123456789');
     assert.deepEqual(providerRequest.body.nodeInfoList, [{ nodeId:'6', fieldName:'text', fieldValue:'A cat walks.' }]);
     assert.doesNotMatch(JSON.stringify(result), /123456789/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('RunningHub V2 AI instance uses the instance path and direct response contract', async () => {
+  const values = new Map();
+  const kv = {
+    get: async (key, type) => {
+      const value = values.get(key);
+      return type === 'json' && value ? JSON.parse(value) : value;
+    },
+    put: async (key, value) => values.set(key, value),
+  };
+  const env = {
+    SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv,
+    RUNNINGHUB_AI_APPS:JSON.stringify([{
+      id:'seedance', name:'Seedance 2.5 文生视频', apiVersion:'v2', webappId:'2085880920086765569',
+      promptNodeId:'1', promptField:'prompt', durationNodeId:'1', durationField:'duration',
+      ratioNodeId:'1', ratioField:'ratio', fixedFields:[
+        {nodeId:'1', fieldName:'resolution', fieldValue:'720p'},
+        {nodeId:'1', fieldName:'outputFormat', fieldValue:'mp4'},
+      ],
+    }]),
+  };
+  const originalFetch = globalThis.fetch;
+  let providerRequest;
+  globalThis.fetch = async (url, options) => {
+    providerRequest = {url:String(url), body:JSON.parse(options.body)};
+    return Response.json({taskId:'v2-task-1', status:'RUNNING', results:null});
+  };
+  try {
+    const response = await createVideoJob({
+      request:new Request('http://127.0.0.1/api/video-jobs', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'X-Provider-Key':'runninghub-test-key', 'Idempotency-Key':'v2app_12345678'},
+        body:JSON.stringify({provider:'runninghub', generation_mode:'ai_app', instance_id:'seedance', confirm_paid:true, prompt:'A cat walks.', duration:15, ratio:'16:9'}),
+      }), env,
+    });
+    const result = await response.json();
+    assert.equal(response.status, 202);
+    assert.equal(result.job.api_version, 'v2');
+    assert.match(providerRequest.url, /runninghub\.cn\/openapi\/v2\/run\/ai-app\/2085880920086765569$/);
+    assert.deepEqual(providerRequest.body.nodeInfoList, [
+      {nodeId:'1', fieldName:'prompt', fieldValue:'A cat walks.'},
+      {nodeId:'1', fieldName:'duration', fieldValue:'15'},
+      {nodeId:'1', fieldName:'ratio', fieldValue:'16:9'},
+      {nodeId:'1', fieldName:'resolution', fieldValue:'720p'},
+      {nodeId:'1', fieldName:'outputFormat', fieldValue:'mp4'},
+    ]);
   } finally {
     globalThis.fetch = originalFetch;
   }

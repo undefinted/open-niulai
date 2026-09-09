@@ -1,6 +1,6 @@
 import { errorResponse, json, readJson } from '../../_lib/http.js';
 import { buildPayload, credentials, minimaxRequest } from '../../_lib/minimax.js';
-import { buildAiAppNodeInfo, buildNodeInfo, getAiApp, runningHubJson } from '../../_lib/runninghub.js';
+import { buildAiAppNodeInfo, buildNodeInfo, getAiApp, runningHubJson, runningHubV2Json } from '../../_lib/runninghub.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, publicJob, validateIdempotencyKey } from '../../_lib/session.js';
 
 const JOB_TTL = 7 * 24 * 60 * 60;
@@ -30,14 +30,17 @@ export async function onRequestPost(context) {
     if (payload.provider === 'runninghub') {
       if (payload.generation_mode === 'ai_app') {
         const instance = getAiApp(context.env, payload.instance_id);
-        const data = await runningHubJson('/task/openapi/ai-app/run', apiKey, {
-          webappId: instance.webapp_id,
-          nodeInfoList: buildAiAppNodeInfo(instance, payload, payload.uploaded_file_name || null),
-        });
+        const nodeInfoList = buildAiAppNodeInfo(instance, payload, payload.uploaded_file_name || null);
+        const data = instance.api_version === 'v2'
+          ? await runningHubV2Json(`/openapi/v2/run/ai-app/${instance.webapp_id}`, apiKey, {
+            nodeInfoList, instanceType: 'default', usePersonalQueue: false,
+          })
+          : await runningHubJson('/task/openapi/ai-app/run', apiKey, { webappId: instance.webapp_id, nodeInfoList });
         if (!data?.taskId) throw new Error('RunningHub AI 实例未返回任务 ID，未自动重试以避免重复扣费。');
         const job = {
           id: String(data.taskId), provider: 'runninghub', model: instance.name,
-          status: String(data.taskStatus || 'queued').toLowerCase(), generation_mode: 'ai_app',
+          status: String(data.status || data.taskStatus || 'queued').toLowerCase(), generation_mode: 'ai_app',
+          api_version: instance.api_version,
           instance_id: instance.id, input_mode: payload.uploaded_file_name ? 'first_frame' : 'text',
           created_at: Math.floor(Date.now() / 1000), owner: session.id, idempotency_key: idempotencyKey,
         };

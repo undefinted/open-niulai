@@ -8,10 +8,10 @@ Open NiuLai uses a two-stage product flow: generate and review the script first,
 2. Copy its `WebAppId` and exposed input mappings from the RunningHub API call page.
 3. Add the mapping to the server-side `RUNNINGHUB_AI_APPS` JSON configuration.
 4. The browser reads only the sanitized `/api/video-instances` catalog and displays the instance name, description, input support, estimated cost text, and availability.
-5. After the user confirms the charge, the server calls `POST /task/openapi/ai-app/run` with the hidden `WebAppId` and mapped `nodeInfoList`.
-6. The browser polls the existing RunningHub outputs endpoint and displays the returned video.
+5. After the user confirms the charge, the server calls the instance's configured API version. Current V2 applications use `POST /openapi/v2/run/ai-app/{webappId}`; legacy applications remain supported through `POST /task/openapi/ai-app/run`.
+6. The browser polls the matching RunningHub query endpoint and displays the returned video. V2 result links expire after 24 hours, so accepted results must be downloaded or transferred promptly.
 
-The deployment recognizes `minimax-h3` and `seedance` as stable product-facing slots. They remain visibly unavailable until a real instance mapping is configured. This prevents a placeholder from being presented as a working paid integration.
+The deployment recognizes `minimax-h3` and `seedance` as stable product-facing slots and can add more administrator-reviewed instances through the same catalog. A slot remains visibly unavailable until a real instance mapping is configured. This prevents a placeholder from being presented as a working paid integration.
 
 ## Advanced workflow mode
 

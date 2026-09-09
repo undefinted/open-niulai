@@ -1,6 +1,6 @@
 import { errorResponse, HttpError, json } from '../../_lib/http.js';
 import { credentials, minimaxRequest } from '../../_lib/minimax.js';
-import { normalizeOutputs, runningHubJson } from '../../_lib/runninghub.js';
+import { normalizeOutputs, runningHubJson, runningHubV2Json } from '../../_lib/runninghub.js';
 import { assertPaidRuntime, ensureSession, publicJob } from '../../_lib/session.js';
 
 const JOB_TTL = 7 * 24 * 60 * 60;
@@ -18,7 +18,10 @@ export async function onRequestGet(context) {
     if (stored) provider = stored.provider;
     let job;
     if (provider === 'runninghub') {
-      const result = normalizeOutputs(await runningHubJson('/task/openapi/outputs', apiKey, { taskId: id }));
+      const providerResult = stored?.api_version === 'v2'
+        ? await runningHubV2Json('/openapi/v2/query', apiKey, { taskId: id })
+        : await runningHubJson('/task/openapi/outputs', apiKey, { taskId: id });
+      const result = normalizeOutputs(providerResult);
       job = { ...(stored || {}), id, provider, model: stored?.model || 'RunningHub 任务', ...result, updated_at: Math.floor(Date.now() / 1000) };
     } else {
       const result = await minimaxRequest('GET', `/v2/query/video_generation/${encodeURIComponent(id)}`, apiKey, region);

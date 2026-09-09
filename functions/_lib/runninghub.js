@@ -1,4 +1,5 @@
 const BASE_URL = 'https://www.runninghub.ai';
+const CN_V2_BASE_URL = 'https://www.runninghub.cn';
 const VIDEO_TYPES = new Set(['mp4', 'webm', 'mov', 'm4v']);
 
 function httpsUrl(value) {
@@ -45,6 +46,7 @@ function cleanInstance(raw, fallback = {}) {
     estimated_cost: String(raw?.estimated_cost || raw?.estimatedCost || '以 RunningHub 提交页为准').slice(0, 80),
     supports_image: raw?.supports_image ?? raw?.supportsImage ?? fallback.supports_image ?? false,
     configured: /^\d{6,30}$/.test(webappId) && Boolean(promptNodeId),
+    api_version: String(raw?.api_version || raw?.apiVersion || 'legacy') === 'v2' ? 'v2' : 'legacy',
     webapp_id: webappId,
     prompt_node_id: promptNodeId,
     prompt_field: String(raw?.prompt_field || raw?.promptField || 'text').trim(),
@@ -54,6 +56,7 @@ function cleanInstance(raw, fallback = {}) {
     duration_field: String(raw?.duration_field || raw?.durationField || 'value').trim(),
     ratio_node_id: String(raw?.ratio_node_id || raw?.ratioNodeId || '').trim(),
     ratio_field: String(raw?.ratio_field || raw?.ratioField || 'value').trim(),
+    fixed_fields: Array.isArray(raw?.fixed_fields || raw?.fixedFields) ? (raw.fixed_fields || raw.fixedFields).slice(0, 20) : [],
   };
 }
 
@@ -77,7 +80,8 @@ export function aiAppCatalog(env = {}) {
 export function publicAiApp(instance) {
   const { webapp_id: _webappId, prompt_node_id: _promptNodeId, prompt_field: _promptField,
     image_node_id: _imageNodeId, image_field: _imageField, duration_node_id: _durationNodeId,
-    duration_field: _durationField, ratio_node_id: _ratioNodeId, ratio_field: _ratioField, ...safe } = instance;
+    duration_field: _durationField, ratio_node_id: _ratioNodeId, ratio_field: _ratioField,
+    fixed_fields: _fixedFields, api_version: _apiVersion, ...safe } = instance;
   return safe;
 }
 
@@ -113,6 +117,11 @@ export function buildAiAppNodeInfo(instance, payload, uploadedFileName = null) {
     fieldName: assertNodeId(instance.ratio_field || 'value', '实例比例字段'),
     fieldValue: String(payload.ratio),
   });
+  for (const field of instance.fixed_fields || []) nodes.push({
+    nodeId: assertNodeId(field.node_id || field.nodeId, '实例固定参数'),
+    fieldName: assertNodeId(field.field_name || field.fieldName, '实例固定字段'),
+    fieldValue: String(field.field_value ?? field.fieldValue ?? ''),
+  });
   return nodes;
 }
 
@@ -133,6 +142,21 @@ export function buildNodeInfo(payload, uploadedFileName = null) {
 }
 
 export function normalizeOutputs(data) {
+  if (data && typeof data === 'object' && Array.isArray(data.results)) {
+    const outputs = data.results.map(item => ({
+      url: httpsUrl(item.url),
+      type: String(item.outputType || '').toLowerCase(),
+      node_id: item.nodeId == null ? null : String(item.nodeId),
+    })).filter(item => item.url);
+    const raw = String(data.status || 'RUNNING').toLowerCase();
+    const video = outputs.find(item => VIDEO_TYPES.has(item.type)) || null;
+    const status = raw === 'success' ? (video ? 'succeeded' : 'failed') : raw === 'failed' ? 'failed' : raw === 'queued' ? 'queued' : 'running';
+    return {
+      status, outputs, video_url: video?.url || null, output_type: video?.type || null,
+      error: raw === 'failed' ? (data.errorMessage || 'RunningHub AI 实例生成失败。') : raw === 'success' && !video ? 'AI 实例已完成，但没有返回视频文件。' : null,
+      usage: data.usage || null,
+    };
+  }
   if (Array.isArray(data)) {
     const outputs = data.map(item => ({
       url: httpsUrl(item.fileUrl || item.url),
@@ -167,6 +191,19 @@ export async function runningHubJson(path, apiKey, body) {
   if (!response.ok) throw new Error(`RunningHub HTTP ${response.status}：${result.msg || '请求失败'}`);
   if (result.code !== 0) throw new Error(`RunningHub ${result.code ?? '错误'}：${result.msg || '请求失败'}`);
   return result.data;
+}
+
+export async function runningHubV2Json(path, apiKey, body) {
+  assertKey(apiKey);
+  const response = await fetch(CN_V2_BASE_URL + path, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`RunningHub HTTP ${response.status}：${result.errorMessage || result.message || '请求失败'}`);
+  if (result.errorCode) throw new Error(`RunningHub ${result.errorCode}：${result.errorMessage || '请求失败'}`);
+  return result;
 }
 
 export async function uploadDataUrl(apiKey, dataUrl, filename = 'first-frame.png') {

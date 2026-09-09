@@ -73,8 +73,9 @@ function renderJobHistory() {
     const state = {queued:'排队中', running:'生成中', succeeded:'已完成', failed:'失败', cancelled:'已取消', expired:'已过期', timeout:'查询已暂停'}[job.status] || job.status;
     const action = job.video_url
       ? `<a class="secondary" href="${escapeHtml(job.video_url)}" target="_blank" rel="noreferrer">打开成片</a>`
-      : `<button class="secondary" type="button" data-resume-job="${encodeURIComponent(job.id)}" data-provider="${escapeHtml(job.provider)}">恢复查询</button>`;
-    return `<article class="history-row"><div><h3>${escapeHtml(preset)}</h3><p>任务 ${escapeHtml(job.id)} · ${escapeHtml(date)}</p></div><span class="history-state ${escapeHtml(job.status)}">${escapeHtml(state)}</span><div class="history-actions">${action}</div></article>`;
+      : `<button class="secondary" type="button" data-resume-job="${encodeURIComponent(job.id)}" data-provider="${escapeHtml(job.provider)}">${job.status === 'failed' ? '重新查询状态' : '恢复查询'}</button>`;
+    const failure = job.error ? `<p class="history-error">${escapeHtml(job.error)}</p>` : '';
+    return `<article class="history-row"><div><h3>${escapeHtml(preset)}</h3><p>任务 ${escapeHtml(job.id)} · ${escapeHtml(date)}</p>${failure}</div><span class="history-state ${escapeHtml(job.status)}">${escapeHtml(state)}</span><div class="history-actions">${action}</div></article>`;
   }).join('');
 }
 

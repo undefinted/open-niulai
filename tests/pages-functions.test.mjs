@@ -125,6 +125,8 @@ test('Creator UI defaults to RunningHub AI instances and keeps workflows advance
   assert.match(source, /高级：使用自定义工作流/);
   assert.doesNotMatch(source, /id="video-provider"/);
   assert.doesNotMatch(source, /data-submit-video/);
+  assert.match(source, /class="history-error"/);
+  assert.match(source, /重新查询状态/);
 });
 
 test('RunningHub AI app catalog hides WebApp and node mappings from browsers', () => {

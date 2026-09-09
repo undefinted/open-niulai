@@ -112,6 +112,9 @@ h2 { margin: 0 0 8px; font-size: 30px; line-height: 1.2; }
 .workflow-summary { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; column-gap: 9px; align-items: baseline; padding: 12px 14px; border-left: 3px solid var(--coral); background: white; }
 .workflow-summary strong { font-size: 14px; }
 .workflow-summary p { grid-column: 1 / -1; margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.script-review { grid-column: 1 / -1; display: grid; gap: 7px; color: #545d62; font-size: 12px; font-weight: 750; }
+.script-review textarea { min-height: 118px; padding: 12px 14px; border-color: #b9b09a; font-size: 13px; line-height: 1.65; }
+.script-review small { color: var(--muted); font-size: 10px; font-weight: 500; }
 .generation-readiness { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
 .generation-readiness li { min-width: 0; display: flex; gap: 9px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 5px; background: white; }
 .generation-readiness i { width: 25px; height: 25px; flex: 0 0 25px; display: grid; place-items: center; border-radius: 50%; background: var(--soft); color: var(--muted); font-style: normal; font-size: 11px; font-weight: 850; }

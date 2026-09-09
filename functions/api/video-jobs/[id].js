@@ -19,7 +19,7 @@ export async function onRequestGet(context) {
     let job;
     if (provider === 'runninghub') {
       const result = normalizeOutputs(await runningHubJson('/task/openapi/outputs', apiKey, { taskId: id }));
-      job = { ...(stored || {}), id, provider, model: 'RunningHub Workflow', ...result, updated_at: Math.floor(Date.now() / 1000) };
+      job = { ...(stored || {}), id, provider, model: stored?.model || 'RunningHub 任务', ...result, updated_at: Math.floor(Date.now() / 1000) };
     } else {
       const result = await minimaxRequest('GET', `/v2/query/video_generation/${encodeURIComponent(id)}`, apiKey, region);
       const task = result.task || {};

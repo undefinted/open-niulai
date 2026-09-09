@@ -1,6 +1,6 @@
 import { errorResponse, json, readJson } from '../../_lib/http.js';
 import { buildPayload, credentials, minimaxRequest } from '../../_lib/minimax.js';
-import { buildNodeInfo, runningHubJson } from '../../_lib/runninghub.js';
+import { buildAiAppNodeInfo, buildNodeInfo, getAiApp, runningHubJson } from '../../_lib/runninghub.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, publicJob, validateIdempotencyKey } from '../../_lib/session.js';
 
 const JOB_TTL = 7 * 24 * 60 * 60;
@@ -28,6 +28,22 @@ export async function onRequestPost(context) {
     await consumeRateLimit(context.env, session.id);
     const { apiKey, region } = credentials(context.request);
     if (payload.provider === 'runninghub') {
+      if (payload.generation_mode === 'ai_app') {
+        const instance = getAiApp(context.env, payload.instance_id);
+        const data = await runningHubJson('/task/openapi/ai-app/run', apiKey, {
+          webappId: instance.webapp_id,
+          nodeInfoList: buildAiAppNodeInfo(instance, payload, payload.uploaded_file_name || null),
+        });
+        if (!data?.taskId) throw new Error('RunningHub AI 实例未返回任务 ID，未自动重试以避免重复扣费。');
+        const job = {
+          id: String(data.taskId), provider: 'runninghub', model: instance.name,
+          status: String(data.taskStatus || 'queued').toLowerCase(), generation_mode: 'ai_app',
+          instance_id: instance.id, input_mode: payload.uploaded_file_name ? 'first_frame' : 'text',
+          created_at: Math.floor(Date.now() / 1000), owner: session.id, idempotency_key: idempotencyKey,
+        };
+        await saveJob(context.env, job);
+        return json({ job: publicJob(job), replayed: false }, 202, responseHeaders);
+      }
       const workflowId = String(payload.workflow_id || '').trim();
       if (!/^\d{6,30}$/.test(workflowId)) throw new Error('RunningHub 工作流 ID 无效。');
       const data = await runningHubJson('/task/openapi/create', apiKey, {
@@ -38,7 +54,7 @@ export async function onRequestPost(context) {
       });
       if (!data?.taskId) throw new Error('RunningHub 响应未返回任务 ID，未自动重试以避免重复扣费。');
       const job = {
-        id: String(data.taskId), provider: 'runninghub', model: 'RunningHub Workflow',
+        id: String(data.taskId), provider: 'runninghub', model: 'RunningHub 自定义工作流', generation_mode: 'workflow',
         status: String(data.taskStatus || 'queued').toLowerCase(), workflow_id: workflowId,
         workflow_preset: String(payload.workflow_preset || 'custom'),
         input_mode: payload.uploaded_file_name ? 'first_frame' : 'text', created_at: Math.floor(Date.now() / 1000),
@@ -47,7 +63,7 @@ export async function onRequestPost(context) {
       await saveJob(context.env, job);
       return json({ job: publicJob(job), replayed: false }, 202, responseHeaders);
     }
-    if (payload.provider !== 'minimax') return json({ error: '当前站内真实生成支持 MiniMax H3 和 RunningHub 工作流。' }, 501);
+    if (payload.provider !== 'minimax') return json({ error: '当前站内真实生成支持 RunningHub AI 实例、自定义工作流和 MiniMax H3 兼容接口。' }, 501);
     const duration = Math.max(4, Math.min(15, Number(payload.duration || 10)));
     const requestBody = buildPayload(payload.prompt, duration, String(payload.ratio || '16:9'), payload.first_frame_image || null);
     const result = await minimaxRequest('POST', '/v2/video_generation', apiKey, region, requestBody);

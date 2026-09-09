@@ -24,6 +24,28 @@ Create and bind two Cloudflare KV namespaces. Their non-secret namespace IDs liv
 
 Set `SESSION_SECRET` as an encrypted Pages secret with at least 32 random bytes. Optionally set `PAID_JOB_LIMIT_PER_HOUR`; the default is 6. Do not place the secret or real KV namespace IDs in Git. After deployment, `/api/health` must report `production_ready: true` before public promotion.
 
+Set `RUNNINGHUB_AI_APPS` as an encrypted Pages secret containing the administrator-approved AI application catalog. `webappId` and node mappings stay server-side; the public `/api/video-instances` response contains only display metadata and availability. Example structure (replace every sample identifier with values copied from the selected RunningHub AI application's API page):
+
+```json
+[
+  {
+    "id": "minimax-h3",
+    "name": "MiniMax H3 成片实例",
+    "badge": "快速出片",
+    "description": "适合文本直出和首帧引导的短片",
+    "webappId": "123456789",
+    "promptNodeId": "6",
+    "promptField": "text",
+    "imageNodeId": "12",
+    "imageField": "image",
+    "supportsImage": true,
+    "estimatedCost": "以 RunningHub 实际结算为准"
+  }
+]
+```
+
+Optional `durationNodeId`/`durationField` and `ratioNodeId`/`ratioField` mappings pass duration and ratio when the selected AI application exposes those inputs. Never commit the real catalog when its instance mapping should remain private.
+
 ## Domain setup
 
 1. Add `myyuanlai.xyz` to Cloudflare and select the Free plan.

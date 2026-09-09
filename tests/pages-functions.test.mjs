@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { createPack } from '../functions/_lib/pack.js';
 import { evaluatePack } from '../functions/_lib/quality.js';
 import { buildPayload } from '../functions/_lib/minimax.js';
-import { buildNodeInfo, normalizeOutputs } from '../functions/_lib/runninghub.js';
+import { aiAppCatalog, buildAiAppNodeInfo, buildNodeInfo, normalizeOutputs, publicAiApp } from '../functions/_lib/runninghub.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, getSession, validateIdempotencyKey } from '../functions/_lib/session.js';
 import { onRequestPost as createVideoJob } from '../functions/api/video-jobs/index.js';
 import { onRequestPost as submitFeedback } from '../functions/api/feedback.js';
@@ -92,12 +92,32 @@ test('RunningHub output normalization rejects non-HTTPS result links', () => {
   assert.equal(result.video_url, null);
 });
 
-test('Creator UI exposes RunningHub workflow presets without legacy provider choices', () => {
+test('Creator UI defaults to RunningHub AI instances and keeps workflows advanced', () => {
   const source = readFileSync(new URL('../web/app.js', import.meta.url), 'utf8');
-  assert.match(source, /MiniMax H3 · 快速出片/);
-  assert.match(source, /Seedance · 高质量/);
+  assert.match(source, /MiniMax H3 成片实例/);
+  assert.match(source, /Seedance 成片实例/);
+  assert.match(source, /确认或修改最终视频脚本/);
+  assert.match(source, /generation_mode:customMode \? 'workflow' : 'ai_app'/);
+  assert.match(source, /高级：使用自定义工作流/);
   assert.doesNotMatch(source, /id="video-provider"/);
   assert.doesNotMatch(source, /data-submit-video/);
+});
+
+test('RunningHub AI app catalog hides WebApp and node mappings from browsers', () => {
+  const env = { RUNNINGHUB_AI_APPS: JSON.stringify([{
+    id:'minimax-h3', name:'H3 instance', webappId:'123456789', promptNodeId:'6', promptField:'text',
+    imageNodeId:'12', imageField:'image', supportsImage:true,
+  }]) };
+  const instance = aiAppCatalog(env).find(item => item.id === 'minimax-h3');
+  assert.equal(instance.configured, true);
+  assert.deepEqual(buildAiAppNodeInfo(instance, { prompt:'A cat walks.', duration:10, ratio:'16:9' }, 'api/cat.png'), [
+    { nodeId:'6', fieldName:'text', fieldValue:'A cat walks.' },
+    { nodeId:'12', fieldName:'image', fieldValue:'api/cat.png' },
+  ]);
+  const publicInstance = publicAiApp(instance);
+  assert.equal(publicInstance.webapp_id, undefined);
+  assert.equal(publicInstance.prompt_node_id, undefined);
+  assert.equal(publicInstance.configured, true);
 });
 
 test('signed anonymous sessions survive valid cookies and reject tampering', async () => {
@@ -208,6 +228,49 @@ test('a repeated paid request replays the stored RunningHub job without a second
     assert.equal((await second.json()).replayed, true);
     assert.equal(calls, 1);
     assert.doesNotMatch([...values.values()].join(''), /runninghub-test-key/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('RunningHub AI instance submits its hidden WebApp mapping', async () => {
+  const values = new Map();
+  const kv = {
+    get: async (key, type) => {
+      const value = values.get(key);
+      return type === 'json' && value ? JSON.parse(value) : value;
+    },
+    put: async (key, value) => values.set(key, value),
+  };
+  const env = {
+    SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv,
+    RUNNINGHUB_AI_APPS:JSON.stringify([{
+      id:'minimax-h3', name:'MiniMax H3 成片实例', webappId:'123456789', promptNodeId:'6', promptField:'text',
+    }]),
+  };
+  const originalFetch = globalThis.fetch;
+  let providerRequest;
+  globalThis.fetch = async (url, options) => {
+    providerRequest = { url:String(url), body:JSON.parse(options.body) };
+    return Response.json({ code:0, data:{ taskId:'ai-app-task-1', taskStatus:'queued' } });
+  };
+  try {
+    const response = await createVideoJob({
+      request:new Request('http://127.0.0.1/api/video-jobs', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'X-Provider-Key':'runninghub-test-key', 'Idempotency-Key':'aiapp_12345678' },
+        body:JSON.stringify({ provider:'runninghub', generation_mode:'ai_app', instance_id:'minimax-h3', confirm_paid:true, prompt:'A cat walks.' }),
+      }),
+      env,
+    });
+    const result = await response.json();
+    assert.equal(response.status, 202);
+    assert.equal(result.job.generation_mode, 'ai_app');
+    assert.equal(result.job.instance_id, 'minimax-h3');
+    assert.match(providerRequest.url, /\/task\/openapi\/ai-app\/run$/);
+    assert.equal(providerRequest.body.webappId, '123456789');
+    assert.deepEqual(providerRequest.body.nodeInfoList, [{ nodeId:'6', fieldName:'text', fieldValue:'A cat walks.' }]);
+    assert.doesNotMatch(JSON.stringify(result), /123456789/);
   } finally {
     globalThis.fetch = originalFetch;
   }

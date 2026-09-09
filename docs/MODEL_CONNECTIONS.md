@@ -1,13 +1,13 @@
 # 模型连接中心
 
-Open NiuLai 当前采用 RunningHub 统一执行层。用户连接一个自己的 RunningHub API Key，再选择 MiniMax H3、Seedance 或自定义视频工作流；所选工作流消耗该 RunningHub 账户对应的额度。
+Open NiuLai 当前采用 RunningHub 统一执行层。用户连接自己的 RunningHub API Key，确认脚本后选择管理员审核过的 MiniMax H3、Seedance 等 AI 应用实例；所选实例消耗该 RunningHub 账户对应的额度。自定义视频工作流仅作为高级模式保留。
 
 ## 当前支持
 
 | 能力 | 当前方式 | 说明 |
 | --- | --- | --- |
-| MiniMax H3 | RunningHub 工作流预设 | 用户绑定自己的工作流 ID 与提示词节点 |
-| Seedance | RunningHub 工作流预设 | 用户绑定自己的多参考或视频工作流 |
+| MiniMax H3 | RunningHub AI 应用实例 | 后台绑定 WebAppId，用户直接选择并生成 |
+| Seedance | RunningHub AI 应用实例 | 后台绑定 WebAppId，用户直接选择并生成 |
 | 其他开源模型 | RunningHub 自定义工作流 | 使用用户有权调用的工作流及节点映射 |
 | 本地 SVD | 可验证样片 | 只证明仓库内一次真实推理，不冒充任意输入的即时结果 |
 | MiniMax 官方 API | 后端兼容适配器 | 不在默认网页中展示，避免两套账户体验并存 |

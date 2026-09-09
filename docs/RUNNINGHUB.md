@@ -1,30 +1,35 @@
-# RunningHub workflow integration
+# RunningHub AI instance integration
 
-RunningHub is the unified execution and billing layer for the video studio. MiniMax H3, Seedance, and custom generation are presented as workflow presets backed by one RunningHub account.
+Open NiuLai uses a two-stage product flow: generate and review the script first, then send the confirmed video prompt and optional first frame to a published RunningHub AI application instance. The default interface does not ask ordinary users for a workflow ID or node ID.
 
-## User configuration
+## Default AI instance mode
 
-1. Create or copy a video workflow in RunningHub.
-2. Obtain an API Key and connect it once in Open NiuLai's RunningHub dialog.
-3. Open the workflow's exported API JSON.
-4. Choose the matching MiniMax H3, Seedance, or custom preset, then enter the workflow ID and the node ID containing the positive prompt.
-5. If a first frame is uploaded, also enter the image loading node ID.
-6. Confirm the RunningHub account charge before submitting the task.
+1. An administrator selects and tests a published AI application in RunningHub.
+2. Copy its `WebAppId` and exposed input mappings from the RunningHub API call page.
+3. Add the mapping to the server-side `RUNNINGHUB_AI_APPS` JSON configuration.
+4. The browser reads only the sanitized `/api/video-instances` catalog and displays the instance name, description, input support, estimated cost text, and availability.
+5. After the user confirms the charge, the server calls `POST /task/openapi/ai-app/run` with the hidden `WebAppId` and mapped `nodeInfoList`.
+6. The browser polls the existing RunningHub outputs endpoint and displays the returned video.
 
-The default prompt field is `text`; the default image field is `image`. Change these values when the selected custom node exposes a different field name. Presets are product-facing labels, not fabricated workflow IDs: users bind workflows they own or copy in RunningHub.
+The deployment recognizes `minimax-h3` and `seedance` as stable product-facing slots. They remain visibly unavailable until a real instance mapping is configured. This prevents a placeholder from being presented as a working paid integration.
+
+## Advanced workflow mode
+
+The “自定义工作流” option preserves the previous expert flow. It calls `POST /task/openapi/create` and requires a workflow ID, prompt node mapping, and an image node mapping when a first frame is uploaded. These non-secret mappings are saved in the current browser; the access password is not saved.
 
 ## Security and billing
 
-- The API Key is kept in the current browser tab's `sessionStorage`. Non-secret workflow mappings and the latest 20 job summaries use browser `localStorage` so a user can resume after reloading.
-- The key is sent only to same-origin Cloudflare Pages Functions and then to RunningHub over HTTPS.
-- Keys, workflow passwords, and uploaded resources are not committed to GitHub.
-- Each task requires an explicit charge confirmation.
-- Paid creation requests carry an idempotency key, are rate-limited, and are never automatically retried after an uncertain provider response.
-- Production stores signed anonymous job metadata for up to seven days; it does not store the API Key or workflow access password.
-- Output links may expire according to RunningHub policy; production deployments should copy accepted results to controlled object storage.
+- Each user supplies their own RunningHub API Key. It stays in the current tab's `sessionStorage` and is sent only to same-origin Pages Functions over HTTPS.
+- `WebAppId` and administrator node mappings remain in the server environment and are removed from the public instance response.
+- Every paid submission requires a visible confirmation and an idempotency key. The server does not automatically recreate failed tasks.
+- AI applications published by third parties can change or disappear. Revalidate each catalog entry before demonstrations and keep at least one tested fallback instance.
+- Output links may expire according to RunningHub policy. Accepted production results should eventually be copied to controlled object storage.
 
-## API routes
+## API surface
 
+- `GET /api/video-instances`: return the sanitized AI instance catalog.
 - `POST /api/runninghub/uploads`: upload an optional first frame.
-- `POST /api/video-jobs`: create a RunningHub task; the legacy MiniMax adapter remains available only for backend compatibility.
-- `GET /api/video-jobs/:id?provider=runninghub`: poll outputs and normalize the result.
+- `POST /api/video-jobs`: create either an AI App task or an advanced workflow task.
+- `GET /api/video-jobs/:id?provider=runninghub`: query and normalize the result.
+
+See [Cloudflare Pages deployment](CLOUDFLARE_PAGES.md) for the environment variable schema.

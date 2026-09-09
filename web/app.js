@@ -12,10 +12,10 @@ const workflowConfigKey = preset => `open-niulai:runninghub:workflow:${preset}`;
 const jobHistoryKey = 'open-niulai:video-jobs';
 const creatorDraftKey = 'open-niulai:creator-draft';
 const packDraftKey = 'open-niulai:last-pack';
-const workflowPresets = {
-  'minimax-h3': {name:'MiniMax H3', badge:'快速出片', description:'适合文生视频、首帧引导和带声音的短片工作流。'},
-  'seedance': {name:'Seedance', badge:'高质量', description:'适合多参考素材、角色一致性和视频编辑工作流。'},
-  'custom': {name:'自定义工作流', badge:'专业模式', description:'运行你在 RunningHub 中保存的任意视频工作流。'},
+let workflowPresets = {
+  'minimax-h3': {id:'minimax-h3', name:'MiniMax H3 成片实例', badge:'快速出片', description:'适合文本直出、首帧引导和带声音的短片。', supports_image:true, configured:false, mode:'ai_app'},
+  'seedance': {id:'seedance', name:'Seedance 成片实例', badge:'高质量', description:'适合强调镜头表现、角色一致性和参考素材的视频。', supports_image:true, configured:false, mode:'ai_app'},
+  'custom': {id:'custom', name:'自定义工作流', badge:'专业模式', description:'高级用户可以运行自己在 RunningHub 中保存的工作流。', supports_image:true, configured:true, mode:'workflow'},
 };
 
 function getConnection(provider) {
@@ -53,6 +53,7 @@ function saveJob(job) {
   const safe = {
     id:String(job.id), provider:String(job.provider || 'runninghub'), model:String(job.model || 'RunningHub Workflow'),
     status:String(job.status || 'queued'), workflow_id:job.workflow_id ? String(job.workflow_id) : null,
+    generation_mode:String(job.generation_mode || 'workflow'), instance_id:job.instance_id ? String(job.instance_id) : null,
     workflow_preset:String(job.workflow_preset || selectedWorkflow), created_at:Number(job.created_at || Date.now() / 1000),
     updated_at:Number(job.updated_at || Date.now() / 1000), video_url:safeExternalUrl(job.video_url),
     error:job.error ? String(job.error) : null,
@@ -67,7 +68,7 @@ function renderJobHistory() {
   const section = document.querySelector('#recent-jobs');
   section.classList.toggle('hidden', jobs.length === 0);
   document.querySelector('#job-history').innerHTML = jobs.map(job => {
-    const preset = workflowPresets[job.workflow_preset]?.name || job.model;
+    const preset = job.generation_mode === 'ai_app' ? job.model : workflowPresets[job.workflow_preset]?.name || job.model;
     const date = new Date(job.created_at * 1000).toLocaleString('zh-CN', {hour12:false});
     const state = {queued:'排队中', running:'生成中', succeeded:'已完成', failed:'失败', cancelled:'已取消', expired:'已过期', timeout:'查询已暂停'}[job.status] || job.status;
     const action = job.video_url
@@ -133,11 +134,11 @@ function render(pack, {scroll = true} = {}) {
     <article class="prompt-card">${copyButton(text)}<span>图像提示词</span><h3>${visualLabels[key] || key}</h3><p>${escapeHtml(text)}</p></article>`).join('')}</div>`;
 
   const shot = pack.video_shots[0];
-  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 内容已就绪</span><h3 id="generation-title">直接从这里生成视频</h3><p id="generation-account-note">生成任务统一由 RunningHub 执行，并使用你的 RunningHub 账户额度。</p></div><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">未上传首帧：文本直出</b></label><label class="model-select"><span>第 3 步 · 视频工作流</span><select id="video-workflow"><option value="minimax-h3">MiniMax H3 · 快速出片</option><option value="seedance">Seedance · 高质量</option><option value="custom">自定义 RunningHub 工作流</option></select></label><div id="generation-action"></div><div id="workflow-summary" class="workflow-summary"></div><ol id="generation-readiness" class="generation-readiness" aria-label="生成准备状态"></ol><details id="workflow-config" class="workflow-config"><summary>工作流绑定与高级设置</summary><div class="advanced-workflow"><div><span class="provider-badge">仅需绑定一次</span><h4 id="workflow-config-title">绑定 RunningHub 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="从 RunningHub API 调用页复制"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选，不保存）<input id="rh-access-password" type="password" autocomplete="off"></label><p>工作流配置保存在当前浏览器；API Key 只保留到标签页关闭，访问密码不保存。</p></div></details><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>统一生成</strong><span>Open NiuLai 负责脚本、分镜和提示词，RunningHub 负责 MiniMax H3、Seedance 与自定义工作流的算力和计费。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
+  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 脚本已就绪</span><h3 id="generation-title">确认脚本，直接生成视频</h3><p id="generation-account-note">选择已经调试好的 RunningHub AI 实例，系统会自动填入脚本和素材。</p></div><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">未上传首帧：文本直出</b></label><label class="model-select"><span>第 3 步 · AI 实例</span><select id="video-generator" aria-label="选择 RunningHub AI 实例"></select></label><div id="generation-action"></div><label class="script-review"><span>确认或修改最终视频脚本</span><textarea id="video-script-prompt" maxlength="7000">${escapeHtml(shot.motion_prompt)}</textarea><small>这里的内容会作为最终提示词传给所选 AI 实例。</small></label><div id="workflow-summary" class="workflow-summary"></div><ol id="generation-readiness" class="generation-readiness" aria-label="生成准备状态"></ol><details id="workflow-config" class="workflow-config hidden"><summary>高级：使用自定义工作流</summary><div class="advanced-workflow"><div><span class="provider-badge">专业模式</span><h4 id="workflow-config-title">绑定 RunningHub 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="从 RunningHub API 调用页复制"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选，不保存）<input id="rh-access-password" type="password" autocomplete="off"></label><p>仅自定义工作流需要这些信息。AI 实例的 WebAppId 和参数映射由平台后台维护，不会显示给普通用户。</p></div></details><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>两阶段生成</strong><span>Open NiuLai 先生成可修改的脚本和分镜；确认后，RunningHub AI 实例负责生成视频并返回成片。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
     <div><dt>镜头</dt><dd>${escapeHtml(shot.camera)}</dd></div><div><dt>台词</dt><dd>${escapeHtml(shot.voiceover)}</dd></div><div><dt>避免</dt><dd>${escapeHtml(shot.negative_prompt)}</dd></div>
   </dl></aside></div><div class="result-player"><video controls muted loop playsinline poster="/demo/mao-first-frame.png"><source src="/demo/mao-lai-svd-captioned.mp4" type="video/mp4"></video><p><strong>参考样片</strong><br>当前播放的是本地 SVD 验证样片，不是本次输入即时生成的成片。</p></div></div>`;
   document.querySelector('#tab-video').insertAdjacentHTML('afterbegin', qualityMarkup(pack.quality_report, true));
-  loadProviders().then(() => { updateWorkflowPreset(); updateGenerationStudio(); }).catch(error => notify(error.message));
+  Promise.all([loadProviders(), loadVideoInstances()]).then(() => { updateWorkflowPreset(); updateGenerationStudio(); }).catch(error => notify(error.message));
 
   const copy = pack.publishing_copy;
   document.querySelector('#tab-publish').innerHTML = `<div class="publish-grid">
@@ -255,6 +256,16 @@ async function loadProviders() {
   updateGenerationStudio();
 }
 
+async function loadVideoInstances() {
+  const response = await fetch('/api/video-instances');
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'AI 实例目录加载失败');
+  const custom = workflowPresets.custom;
+  workflowPresets = Object.fromEntries(result.instances.map(instance => [instance.id, {...instance, mode:'ai_app'}]));
+  workflowPresets.custom = custom;
+  if (!workflowPresets[selectedWorkflow]) selectedWorkflow = Object.keys(workflowPresets)[0] || 'custom';
+}
+
 function currentWorkflowConfig() {
   const stored = getWorkflowConfig(selectedWorkflow);
   const value = id => document.querySelector(id)?.value.trim();
@@ -279,36 +290,48 @@ function updateGenerationStudio() {
   if (!item) return;
   const connected = providerState.connected.includes(item.id);
   const config = currentWorkflowConfig();
+  const preset = workflowPresets[selectedWorkflow] || workflowPresets.custom;
+  const customMode = preset.mode === 'workflow';
   const serviceReady = providerState.secure_context && providerState.generation_ready !== false;
   const qualityReady = currentPack?.quality_report?.status === 'passed';
+  const scriptReady = Boolean(document.querySelector('#video-script-prompt')?.value.trim());
   const workflowReady = Boolean(config.workflow_id && config.prompt_node_id);
-  const inputReady = !firstFrameDataUrl || Boolean(config.image_node_id);
+  const generatorReady = customMode ? workflowReady : Boolean(preset.configured);
+  const inputReady = !firstFrameDataUrl || (customMode ? Boolean(config.image_node_id) : Boolean(preset.supports_image));
   const note = document.querySelector('#generation-account-note');
-  note.textContent = `${workflowPresets[selectedWorkflow].name} 将在 RunningHub 中运行，费用从你的 RunningHub 账户扣除。`;
+  note.textContent = customMode
+    ? `${preset.name} 将使用你的节点配置运行，费用从 RunningHub 账户扣除。`
+    : `${preset.name} 会自动接收当前脚本${firstFrameDataUrl ? '和首帧' : ''}，费用从 RunningHub 账户扣除。`;
   const checks = [
     {done:qualityReady, label:'质量门禁', detail:qualityReady ? `规则验证 ${currentPack.quality_report.score}/100` : '请重新生成并修正失败项'},
+    {done:scriptReady, label:'视频脚本', detail:scriptReady ? '已确认，可继续修改' : '请填写最终视频脚本'},
     {done:serviceReady && connected, label:'模型账户', detail:!serviceReady ? '服务尚未开放付费任务' : connected ? 'RunningHub 已临时连接' : '需要连接 RunningHub'},
-    {done:workflowReady, label:'工作流绑定', detail:workflowReady ? `${workflowPresets[selectedWorkflow].name} 已就绪` : '填写工作流 ID 与提示词节点'},
-    {done:inputReady, label:'画面输入', detail:firstFrameDataUrl ? (inputReady ? '首帧与图片节点已就绪' : '还需填写图片节点 ID') : '文本直出，无需图片节点'},
+    {done:generatorReady, label:customMode ? '工作流绑定' : 'AI 实例', detail:generatorReady ? `${preset.name} 已就绪` : customMode ? '填写工作流 ID 与提示词节点' : '该实例等待管理员绑定'},
+    {done:inputReady, label:'画面输入', detail:firstFrameDataUrl ? (inputReady ? '首帧输入已就绪' : customMode ? '还需填写图片节点 ID' : '该实例不接受首帧') : '文本直出'},
   ];
   const firstPending = checks.findIndex(check => !check.done);
   document.querySelector('#generation-readiness').innerHTML = checks.map((check, index) => `<li class="${check.done ? 'done' : index === firstPending ? 'current' : 'waiting'}"><i>${check.done ? '✓' : index + 1}</i><span><strong>${escapeHtml(check.label)}</strong><small>${escapeHtml(check.detail)}</small></span></li>`).join('');
   if (!qualityReady) action.innerHTML = '<button class="primary" type="button" disabled><span>质量门禁未通过</span><b>·</b></button>';
+  else if (!scriptReady) action.innerHTML = '<button class="primary" type="button" disabled><span>请先确认视频脚本</span><b>·</b></button>';
   else if (!providerState.secure_context) action.innerHTML = '<button class="primary" type="button" disabled><span>当前连接不安全</span><b>·</b></button>';
   else if (providerState.generation_ready === false) action.innerHTML = '<button class="primary" type="button" disabled><span>生成服务配置中</span><b>·</b></button>';
   else if (!connected) action.innerHTML = '<button class="primary" type="button" data-open-connections><span>下一步：连接账户</span><b>→</b></button>';
-  else if (!workflowReady) action.innerHTML = '<button class="primary" type="button" data-open-workflow-config><span>下一步：绑定工作流</span><b>→</b></button>';
-  else if (!inputReady) action.innerHTML = '<button class="primary" type="button" data-open-workflow-config><span>下一步：填写图片节点</span><b>→</b></button>';
+  else if (!generatorReady && customMode) action.innerHTML = '<button class="primary" type="button" data-open-workflow-config><span>下一步：绑定工作流</span><b>→</b></button>';
+  else if (!generatorReady) action.innerHTML = '<button class="primary" type="button" disabled><span>AI 实例待配置</span><b>·</b></button>';
+  else if (!inputReady && customMode) action.innerHTML = '<button class="primary" type="button" data-open-workflow-config><span>下一步：填写图片节点</span><b>→</b></button>';
+  else if (!inputReady) action.innerHTML = '<button class="primary" type="button" disabled><span>该实例不支持首帧</span><b>·</b></button>';
   else action.innerHTML = '<button class="primary" type="button" data-submit-runninghub><span>确认费用并生成</span><b>→</b></button>';
 }
 
 function updateWorkflowPreset() {
-  const select = document.querySelector('#video-workflow');
+  const select = document.querySelector('#video-generator');
   if (!select) return;
+  select.innerHTML = Object.values(workflowPresets).map(preset => `<option value="${escapeHtml(preset.id)}">${escapeHtml(preset.name)}${preset.mode === 'ai_app' && !preset.configured ? ' · 待配置' : ''}</option>`).join('');
   select.value = selectedWorkflow;
   const preset = workflowPresets[selectedWorkflow];
   const config = getWorkflowConfig(selectedWorkflow);
-  document.querySelector('#workflow-summary').innerHTML = `<span class="provider-badge">${escapeHtml(preset.badge)}</span><strong>${escapeHtml(preset.name)}</strong><p>${escapeHtml(preset.description)}</p>`;
+  const availability = preset.mode === 'ai_app' ? (preset.configured ? `可用 · ${preset.estimated_cost}` : '实例尚未由管理员绑定') : '高级模式';
+  document.querySelector('#workflow-summary').innerHTML = `<span class="provider-badge">${escapeHtml(preset.badge)}</span><strong>${escapeHtml(preset.name)}</strong><p>${escapeHtml(preset.description)} · ${escapeHtml(availability)}</p>`;
   document.querySelector('#workflow-config-title').textContent = `绑定 ${preset.name} 工作流`;
   document.querySelector('#rh-workflow-id').value = config.workflow_id || '';
   document.querySelector('#rh-prompt-node').value = config.prompt_node_id || '';
@@ -316,7 +339,9 @@ function updateWorkflowPreset() {
   document.querySelector('#rh-image-node').value = config.image_node_id || '';
   document.querySelector('#rh-image-field').value = config.image_field || 'image';
   document.querySelector('#rh-access-password').value = '';
-  document.querySelector('#workflow-config').open = !config.workflow_id || !config.prompt_node_id;
+  const details = document.querySelector('#workflow-config');
+  details.classList.toggle('hidden', preset.mode !== 'workflow');
+  details.open = preset.mode === 'workflow' && (!config.workflow_id || !config.prompt_node_id);
   updateGenerationStudio();
 }
 
@@ -328,7 +353,7 @@ document.querySelector('#connections-open').addEventListener('click', openConnec
 document.querySelector('#connections-close').addEventListener('click', () => dialog.close());
 document.addEventListener('click', event => { if (event.target.closest('[data-open-connections]')) openConnections(); });
 document.addEventListener('change', event => {
-  if (event.target.id === 'video-workflow') {
+  if (event.target.id === 'video-generator') {
     selectedWorkflow = event.target.value;
     updateWorkflowPreset();
   }
@@ -342,6 +367,7 @@ document.addEventListener('change', event => {
   }
 });
 document.addEventListener('input', event => {
+  if (event.target.id === 'video-script-prompt') updateGenerationStudio();
   if (event.target.closest('#workflow-config') && event.target.id !== 'rh-access-password') {
     saveVisibleWorkflowConfig();
     updateGenerationStudio();
@@ -382,7 +408,7 @@ document.addEventListener('submit', async event => {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || '评价提交失败');
-    feedbackForm.outerHTML = '<p class="feedback-thanks"><strong>已记录</strong><span>这条评价会用于改进提示词和工作流选择。</span></p>';
+    feedbackForm.outerHTML = '<p class="feedback-thanks"><strong>已记录</strong><span>这条评价会用于改进提示词和 AI 实例推荐。</span></p>';
   } catch (error) {
     button.disabled = false;
     button.textContent = '提交评价';
@@ -424,22 +450,26 @@ dialog.addEventListener('click', async event => {
 async function submitRunningHub() {
   if (!currentPack) return;
   if (currentPack.quality_report?.status !== 'passed') { notify('质量门禁未通过，请重新生成并检查失败项'); return; }
+  const preset = workflowPresets[selectedWorkflow];
+  const customMode = preset.mode === 'workflow';
   const workflowId = document.querySelector('#rh-workflow-id').value.trim();
   const promptNodeId = document.querySelector('#rh-prompt-node').value.trim();
   const imageNodeId = document.querySelector('#rh-image-node').value.trim();
-  if (!workflowId || !promptNodeId) { notify('请填写工作流 ID 和提示词节点 ID'); return; }
-  if (firstFrameDataUrl && !imageNodeId) { notify('上传首帧后需要填写图片节点 ID'); return; }
-  saveWorkflowConfig(selectedWorkflow, {
+  if (customMode && (!workflowId || !promptNodeId)) { notify('请填写工作流 ID 和提示词节点 ID'); return; }
+  if (customMode && firstFrameDataUrl && !imageNodeId) { notify('上传首帧后需要填写图片节点 ID'); return; }
+  if (!customMode && !preset.configured) { notify('所选 AI 实例尚未配置'); return; }
+  if (!customMode && firstFrameDataUrl && !preset.supports_image) { notify('所选 AI 实例不支持首帧输入'); return; }
+  if (customMode) saveWorkflowConfig(selectedWorkflow, {
     workflow_id:workflowId, prompt_node_id:promptNodeId,
     prompt_field:document.querySelector('#rh-prompt-field').value.trim() || 'text',
     image_node_id:imageNodeId, image_field:document.querySelector('#rh-image-field').value.trim() || 'image',
   });
-  if (!window.confirm(`将使用你的 RunningHub 账户额度运行 ${workflowPresets[selectedWorkflow].name} 工作流。是否确认提交？`)) return;
+  if (!window.confirm(`将使用你的 RunningHub 账户额度运行 ${preset.name}。费用以 RunningHub 实际结算为准，是否确认提交？`)) return;
   const action = document.querySelector('[data-submit-runninghub]');
   const status = document.querySelector('#video-job-status');
   action.disabled = true;
   status.classList.remove('hidden');
-  status.innerHTML = '<strong>正在准备工作流</strong><span>正在上传素材并创建付费任务，请勿重复点击。</span>';
+  status.innerHTML = `<strong>正在准备${customMode ? '工作流' : ' AI 实例'}</strong><span>正在上传素材并创建付费任务，请勿重复点击。</span>`;
   try {
     let uploadedFileName = null;
     if (firstFrameDataUrl) {
@@ -451,18 +481,21 @@ async function submitRunningHub() {
       if (!upload.ok) throw new Error(uploaded.error || '首帧上传失败');
       uploadedFileName = uploaded.file_name;
     }
-    const shot = currentPack.video_shots[0];
+    const finalPrompt = document.querySelector('#video-script-prompt').value.trim();
+    if (!finalPrompt) throw new Error('请先确认或填写最终视频脚本');
     const response = await fetch('/api/video-jobs', {
       method:'POST', headers:{'Content-Type':'application/json', 'Idempotency-Key':crypto.randomUUID(), ...providerHeaders('runninghub')},
       body:JSON.stringify({
-        provider:'runninghub', workflow_preset:selectedWorkflow, confirm_paid:true, workflow_id:workflowId, prompt:shot.motion_prompt,
+        provider:'runninghub', generation_mode:customMode ? 'workflow' : 'ai_app', instance_id:customMode ? undefined : selectedWorkflow,
+        workflow_preset:selectedWorkflow, confirm_paid:true, workflow_id:customMode ? workflowId : undefined, prompt:finalPrompt,
+        duration:currentPack.constraint_report?.duration_seconds, ratio:'16:9',
         prompt_node_id:promptNodeId, prompt_field:document.querySelector('#rh-prompt-field').value.trim() || 'text',
         image_node_id:imageNodeId, image_field:document.querySelector('#rh-image-field').value.trim() || 'image',
-        uploaded_file_name:uploadedFileName, access_password:document.querySelector('#rh-access-password').value,
+        uploaded_file_name:uploadedFileName, access_password:customMode ? document.querySelector('#rh-access-password').value : undefined,
       }),
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || '工作流提交失败');
+    if (!response.ok) throw new Error(result.error || '视频生成任务提交失败');
     showJob(result.job);
     saveJob(result.job);
     pollJob(result.job.id, 'runninghub');
@@ -476,9 +509,9 @@ function showJob(job) {
   const status = document.querySelector('#video-job-status');
   const labels = {queued:'排队中',running:'生成中',succeeded:'生成完成',failed:'生成失败',cancelled:'已取消',expired:'已过期',timeout:'查询暂停'};
   status.classList.remove('hidden');
-  const presetName = workflowPresets[job.workflow_preset || selectedWorkflow]?.name || '自定义工作流';
+  const presetName = job.model || workflowPresets[job.workflow_preset || selectedWorkflow]?.name || 'RunningHub 任务';
   const detail = job.provider === 'runninghub'
-    ? `${escapeHtml(presetName)} · RunningHub${job.workflow_id ? ` · ${escapeHtml(job.workflow_id)}` : ''}`
+    ? `${escapeHtml(presetName)} · RunningHub · ${job.generation_mode === 'ai_app' ? 'AI 实例' : '自定义工作流'}`
     : `MiniMax H3 · ${job.duration || '-'} 秒 · ${job.ratio || '-'} · ${job.input_mode === 'first_frame' ? '首帧引导' : '文本直出'}`;
   status.innerHTML = `<strong>${labels[job.status] || escapeHtml(job.status)}</strong><span>${job.error ? escapeHtml(job.error) : detail}</span>`;
   saveJob(job);

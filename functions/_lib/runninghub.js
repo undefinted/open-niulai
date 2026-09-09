@@ -20,6 +20,102 @@ function assertNodeId(value, label) {
   return id;
 }
 
+const DEFAULT_AI_APPS = [
+  {
+    id: 'minimax-h3', name: 'MiniMax H3 成片实例', badge: '快速出片',
+    description: '适合文本直出、首帧引导和带声音的短片。', supports_image: true,
+  },
+  {
+    id: 'seedance', name: 'Seedance 成片实例', badge: '高质量',
+    description: '适合强调镜头表现、角色一致性和参考素材的视频。', supports_image: true,
+  },
+];
+
+function cleanInstance(raw, fallback = {}) {
+  const id = String(raw?.id || fallback.id || '').trim();
+  if (!/^[a-z0-9][a-z0-9-]{1,49}$/.test(id)) return null;
+  const webappId = String(raw?.webapp_id || raw?.webappId || '').trim();
+  const promptNodeId = String(raw?.prompt_node_id || raw?.promptNodeId || '').trim();
+  return {
+    id,
+    name: String(raw?.name || fallback.name || id).slice(0, 80),
+    badge: String(raw?.badge || fallback.badge || 'AI 实例').slice(0, 30),
+    description: String(raw?.description || fallback.description || '').slice(0, 240),
+    preview_url: httpsUrl(raw?.preview_url || raw?.previewUrl),
+    estimated_cost: String(raw?.estimated_cost || raw?.estimatedCost || '以 RunningHub 提交页为准').slice(0, 80),
+    supports_image: raw?.supports_image ?? raw?.supportsImage ?? fallback.supports_image ?? false,
+    configured: /^\d{6,30}$/.test(webappId) && Boolean(promptNodeId),
+    webapp_id: webappId,
+    prompt_node_id: promptNodeId,
+    prompt_field: String(raw?.prompt_field || raw?.promptField || 'text').trim(),
+    image_node_id: String(raw?.image_node_id || raw?.imageNodeId || '').trim(),
+    image_field: String(raw?.image_field || raw?.imageField || 'image').trim(),
+    duration_node_id: String(raw?.duration_node_id || raw?.durationNodeId || '').trim(),
+    duration_field: String(raw?.duration_field || raw?.durationField || 'value').trim(),
+    ratio_node_id: String(raw?.ratio_node_id || raw?.ratioNodeId || '').trim(),
+    ratio_field: String(raw?.ratio_field || raw?.ratioField || 'value').trim(),
+  };
+}
+
+export function aiAppCatalog(env = {}) {
+  let configured = [];
+  if (env.RUNNINGHUB_AI_APPS) {
+    try {
+      const parsed = JSON.parse(env.RUNNINGHUB_AI_APPS);
+      if (!Array.isArray(parsed)) throw new Error('必须是数组');
+      configured = parsed.map(item => cleanInstance(item)).filter(Boolean);
+    } catch (error) {
+      throw new Error(`RUNNINGHUB_AI_APPS 配置无效：${error.message}`);
+    }
+  }
+  const byId = new Map(configured.map(item => [item.id, item]));
+  const defaults = DEFAULT_AI_APPS.map(item => cleanInstance(byId.get(item.id) || {}, item));
+  const extras = configured.filter(item => !DEFAULT_AI_APPS.some(defaultItem => defaultItem.id === item.id));
+  return [...defaults, ...extras];
+}
+
+export function publicAiApp(instance) {
+  const { webapp_id: _webappId, prompt_node_id: _promptNodeId, prompt_field: _promptField,
+    image_node_id: _imageNodeId, image_field: _imageField, duration_node_id: _durationNodeId,
+    duration_field: _durationField, ratio_node_id: _ratioNodeId, ratio_field: _ratioField, ...safe } = instance;
+  return safe;
+}
+
+export function getAiApp(env, id) {
+  const instance = aiAppCatalog(env).find(item => item.id === String(id || '').trim());
+  if (!instance || !instance.configured) throw new Error('所选 AI 实例尚未配置或已停用。');
+  return instance;
+}
+
+export function buildAiAppNodeInfo(instance, payload, uploadedFileName = null) {
+  const prompt = String(payload.prompt || '').trim();
+  if (!prompt || prompt.length > 7000) throw new Error('视频提示词长度必须为 1-7000 个字符。');
+  const nodes = [{
+    nodeId: assertNodeId(instance.prompt_node_id, '实例提示词参数'),
+    fieldName: assertNodeId(instance.prompt_field || 'text', '实例提示词字段'),
+    fieldValue: prompt,
+  }];
+  if (uploadedFileName) {
+    if (!instance.supports_image || !instance.image_node_id) throw new Error('所选 AI 实例不支持首帧输入。');
+    nodes.push({
+      nodeId: assertNodeId(instance.image_node_id, '实例图片参数'),
+      fieldName: assertNodeId(instance.image_field || 'image', '实例图片字段'),
+      fieldValue: uploadedFileName,
+    });
+  }
+  if (instance.duration_node_id && payload.duration) nodes.push({
+    nodeId: assertNodeId(instance.duration_node_id, '实例时长参数'),
+    fieldName: assertNodeId(instance.duration_field || 'value', '实例时长字段'),
+    fieldValue: String(payload.duration),
+  });
+  if (instance.ratio_node_id && payload.ratio) nodes.push({
+    nodeId: assertNodeId(instance.ratio_node_id, '实例比例参数'),
+    fieldName: assertNodeId(instance.ratio_field || 'value', '实例比例字段'),
+    fieldValue: String(payload.ratio),
+  });
+  return nodes;
+}
+
 export function buildNodeInfo(payload, uploadedFileName = null) {
   const prompt = String(payload.prompt || '').trim();
   if (!prompt || prompt.length > 7000) throw new Error('工作流提示词长度必须为 1-7000 个字符。');

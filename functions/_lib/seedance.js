@@ -9,15 +9,16 @@ export function seedanceCredentials(request) {
   return {apiKey, model};
 }
 
-export function buildSeedancePayload(prompt, model, duration = 10, ratio = '16:9', firstFrameImage = null) {
+export function buildSeedancePayload(prompt, model, duration = 10, ratio = '16:9', styleReferenceImage = null) {
   const text = String(prompt || '').trim();
   if (!text || text.length > 7000) throw new Error('Seedance 视频提示词长度必须为 1-7000 个字符。');
   if (!['21:9', '16:9', '4:3', '1:1', '3:4', '9:16', 'adaptive'].includes(ratio)) throw new Error('Seedance 视频比例无效。');
   const seconds = Number(duration) <= 5 ? 5 : 10;
   const content = [{type:'text', text:`${text} --ratio ${ratio} --duration ${seconds} --resolution 720p --watermark false`}];
-  if (firstFrameImage) {
-    if (!/^data:image\/(jpeg|png|webp);base64,/.test(firstFrameImage)) throw new Error('首帧必须是 JPG、PNG 或 WebP 图片。');
-    content.push({type:'image_url', image_url:{url:firstFrameImage}, role:'first_frame'});
+  if (styleReferenceImage) {
+    if (!/^data:image\/(jpeg|png|webp);base64,/.test(styleReferenceImage)) throw new Error('风格参考图必须是 JPG、PNG 或 WebP 图片。');
+    if (!/seedance-2-[0-9]/i.test(model)) throw new Error('当前 Seedance 模型只支持首帧，不支持风格参考图。请改用支持 reference_image 的 Seedance 2.x 模型，或移除参考图后使用纯文生视频。');
+    content.push({type:'image_url', image_url:{url:styleReferenceImage}, role:'reference_image'});
   }
   return {model, content};
 }

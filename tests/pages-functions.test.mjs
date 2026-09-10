@@ -111,11 +111,15 @@ test('MiniMax payload rejects invalid duration', () => {
   assert.throws(() => buildPayload('A cat.', 20), /4-15/);
 });
 
-test('Seedance payload includes model controls and an optional first frame', () => {
-  const payload = buildSeedancePayload('Broken low-poly cat walks.', 'seedance-test-model', 10, '16:9', 'data:image/png;base64,AAAA');
-  assert.equal(payload.model, 'seedance-test-model');
+test('Seedance 2.x payload sends an optional image as a whole-video style reference', () => {
+  const payload = buildSeedancePayload('Broken low-poly cat walks.', 'doubao-seedance-2-0-test', 10, '16:9', 'data:image/png;base64,AAAA');
+  assert.equal(payload.model, 'doubao-seedance-2-0-test');
   assert.match(payload.content[0].text, /--ratio 16:9 --duration 10 --resolution 720p/);
-  assert.equal(payload.content[1].role, 'first_frame');
+  assert.equal(payload.content[1].role, 'reference_image');
+});
+
+test('Seedance 1.5 cannot silently reinterpret a style reference as the first frame', () => {
+  assert.throws(() => buildSeedancePayload('Broken low-poly cat walks.', 'doubao-seedance-1-5-pro-251215', 10, '16:9', 'data:image/png;base64,AAAA'), /只支持首帧/);
 });
 
 test('Seedance connection verification checks the key and selected model without creating a task', async () => {
@@ -263,7 +267,7 @@ test('public video catalog exposes AI app instances but not custom workflows or 
     id:'minimax-h3', name:'Stale Wan workflow', webappId:'123456789', promptNodeId:'6', verified:true,
   }])}});
   const result = await response.json();
-  assert.deepEqual(result.instances.map(item => item.id), ['rh-seedance-25-text', 'rh-seedance-15-frames']);
+  assert.deepEqual(result.instances.map(item => item.id), ['rh-seedance-25-text']);
   assert.ok(result.instances.every(item => item.mode === 'dynamic_ai_app'));
   assert.ok(result.instances.every(item => item.webapp_id === undefined));
 });
@@ -337,7 +341,7 @@ test('public UI includes recovery history and legal disclosures', () => {
   assert.match(html, /id="account-dialog"/);
   assert.match(source, /MiniMax H3 · 官方 API/);
   assert.match(source, /Seedance · 火山方舟官方 API/);
-  assert.match(source, /doubao-seedance-1-5-pro-251215/);
+  assert.match(source, /doubao-seedance-2-0-260128/);
   assert.doesNotMatch(source, /doubao-seedance-1-0-lite-t2v-250428/);
   assert.match(html, /data-subject="猫" data-template="ad_hook" data-tone="workplace"/);
   assert.match(html, /data-line="最后改一次" data-duration="10"/);

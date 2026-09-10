@@ -36,6 +36,12 @@ function providerHeaders(provider) {
   return connection ? {'X-Provider-Key': connection.api_key, 'X-Provider-Region': connection.region || 'cn', ...(connection.model_id ? {'X-Provider-Model':connection.model_id} : {})} : {};
 }
 
+function supportsStyleReference(preset) {
+  if (preset?.supports_style_reference !== true) return false;
+  if (preset.provider !== 'seedance') return true;
+  return /seedance-2-[0-9]/i.test(String(getConnection('seedance')?.model_id || ''));
+}
+
 function scriptProviderHeaders(provider) {
   const connection = getConnection(provider);
   return connection ? {'X-Script-Provider-Key': connection.api_key} : {};
@@ -188,6 +194,11 @@ function render(pack, {scroll = true} = {}) {
   document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 脚本已就绪</span><h3 id="generation-title">确认脚本，直接生成视频</h3><p id="generation-account-note">选择已经调试好的 RunningHub AI 实例，系统会自动填入脚本和素材。</p></div><div class="frame-source"><label class="frame-upload"><span>第 2 步 · 画面控制</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">上传实际首帧</b><small>首帧模式会从这张图开始生成，并继承人物、构图与场景；写实照片会继续生成写实画面。</small></label><button class="style-reference" type="button" data-use-style-reference><img src="${escapeHtml(pack.style_profile?.reference_asset || '/style/original-lowpoly-office-reference-v1.png')}" alt="原创粗粝低模参考图"><span>作为实际首帧使用，会继承人物与构图</span></button></div><label class="model-select"><span>第 3 步 · 视频模型</span><select id="video-generator" aria-label="选择 RunningHub 视频模型"></select></label><div id="generation-action"></div><label class="script-review"><span>确认或修改最终视频提示词</span><textarea id="video-script-prompt" maxlength="7000">${escapeHtml(shot.motion_prompt)}</textarea><small>纯文生只能提高风格命中概率；首帧模式会继承图片内容；多模态参考模式可要求只借鉴风格，但仍可能带入部分构图。</small></label><div id="workflow-summary" class="workflow-summary"></div><ol id="generation-readiness" class="generation-readiness" aria-label="生成准备状态"></ol><details id="workflow-config" class="workflow-config hidden"><summary>高级：使用自定义工作流</summary><div class="advanced-workflow"><div><span class="provider-badge">专业模式</span><h4 id="workflow-config-title">绑定 RunningHub 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="从 RunningHub API 调用页复制"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选，不保存）<input id="rh-access-password" type="password" autocomplete="off"></label><p>仅自定义工作流需要这些信息。图片节点通常代表实际首帧，不应当作纯风格参考；具体语义以工作流作者定义为准。</p></div></details><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>脚本与画面分层</strong><span>千问或 DeepSeek 负责故事多样性；Open NiuLai 固定风格和分镜约束；RunningHub 视频模型负责生成视频。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
     <div><dt>镜头</dt><dd>${escapeHtml(shot.camera)}</dd></div><div><dt>台词</dt><dd>${escapeHtml(shot.voiceover)}</dd></div><div><dt>避免</dt><dd>${escapeHtml(shot.negative_prompt)}</dd></div>
   </dl></aside></div><div class="result-player"><video controls muted loop playsinline poster="/demo/mao-first-frame.png"><source src="/demo/mao-lai-svd-captioned.mp4" type="video/mp4"></video><p><strong>参考样片</strong><br>当前播放的是本地 SVD 验证样片，不是本次输入即时生成的成片。</p></div></div>`;
+  const frameLabel = document.querySelector('.frame-upload');
+  frameLabel.querySelector('span').textContent = '第 2 步 · 风格参考（可选）';
+  frameLabel.querySelector('b').textContent = '上传整片风格参考图';
+  frameLabel.querySelector('small').textContent = '只用于参考整支视频的材质、配色、光照与造型语言，不指定视频第一帧。';
+  document.querySelector('.script-review small').textContent = '参考图只影响整片视觉风格，不作为开场画面；不支持 reference_image 的模型将只使用文字提示词。';
   document.querySelector('#tab-video').insertAdjacentHTML('afterbegin', qualityMarkup(pack.quality_report, true));
   Promise.all([loadProviders(), loadVideoInstances()]).then(() => { updateWorkflowPreset(); updateGenerationStudio(); }).catch(error => notify(error.message));
 
@@ -352,7 +363,7 @@ workspace.addEventListener('click', async event => {
         reader.readAsDataURL(blob);
       });
       document.querySelector('#first-frame').value = '';
-      document.querySelector('#frame-name').textContent = '已选择内置原创低模图作为实际首帧';
+      document.querySelector('#frame-name').textContent = '已选择内置原创低模图作为整片风格参考';
       styleReference.classList.add('selected');
       updateGenerationStudio();
       notify('已使用内置原创参考图');
@@ -479,7 +490,7 @@ async function loadProviders() {
     const badge = connected ? '已临时连接' : !providerState.secure_context ? 'HTTPS 后可连接' : !connectionReady ? '服务配置中' : 'API Key';
     let action = '';
     if (connected) action = `<button type="button" class="secondary" data-disconnect="${item.id}">断开</button>`;
-    else if (item.connection === 'api_key' && connectionReady) action = `<form class="key-form ${item.id === 'seedance' ? 'seedance-key-form' : ''}" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="${escapeHtml(item.name)} API Key">${item.id === 'minimax' ? '<select name="region" aria-label="MiniMax API 区域"><option value="cn">中国站</option><option value="global">国际站</option></select>' : ''}${item.id === 'seedance' ? '<input name="model_id" required minlength="6" aria-label="Seedance 模型 ID" placeholder="Seedance 模型 ID" value="doubao-seedance-1-5-pro-251215">' : ''}<button class="secondary" type="submit">${item.id === 'seedance' ? '验证并连接' : '连接'}</button></form>`;
+    else if (item.connection === 'api_key' && connectionReady) action = `<form class="key-form ${item.id === 'seedance' ? 'seedance-key-form' : ''}" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="${escapeHtml(item.name)} API Key">${item.id === 'minimax' ? '<select name="region" aria-label="MiniMax API 区域"><option value="cn">中国站</option><option value="global">国际站</option></select>' : ''}${item.id === 'seedance' ? '<input name="model_id" required minlength="6" aria-label="Seedance 模型 ID" placeholder="Seedance 模型 ID" value="doubao-seedance-2-0-260128">' : ''}<button class="secondary" type="submit">${item.id === 'seedance' ? '验证并连接' : '连接'}</button></form>`;
     else if (item.account_url) action = `<a class="secondary action-link" href="${item.account_url}" target="_blank" rel="noreferrer">前往平台 ↗</a>`;
     const purpose = item.capability === 'script' ? '用于生成三个不同脚本候选，不参与视频扣费。' : item.id === 'minimax' ? '直接调用 MiniMax 官方 H3 API，费用从你的 MiniMax 账户扣除。' : item.id === 'seedance' ? '直接调用火山方舟视频生成 API，需要 API Key 和已开通的 Seedance 模型 ID。' : '用于提交视频生成任务，费用从你的 RunningHub 账户扣除。';
     return `<article class="provider-row"><div><span class="provider-badge">${badge}</span><h3>${escapeHtml(item.name)}</h3><p>${purpose} 凭证不写入磁盘。</p></div>${action}</article>`;
@@ -492,8 +503,8 @@ async function loadVideoInstances() {
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'AI 实例目录加载失败');
   workflowPresets = Object.fromEntries(result.instances.map(instance => [instance.id, {...instance, mode:instance.mode || 'ai_app'}]));
-  workflowPresets['official-minimax-h3'] = {id:'official-minimax-h3', name:'MiniMax H3 · 官方 API', badge:'官方直连', description:'直接调用 MiniMax 官方多模态视频 API，不经过 RunningHub。', supports_image:true, configured:true, mode:'official_api', provider:'minimax', estimated_cost:'按 MiniMax 官方账户实际用量结算'};
-  workflowPresets['official-seedance'] = {id:'official-seedance', name:'Seedance · 火山方舟官方 API', badge:'官方直连', description:'直接调用火山方舟视频生成 API，不经过 RunningHub。', supports_image:true, configured:true, mode:'official_api', provider:'seedance', estimated_cost:'按火山方舟账户实际用量结算'};
+  workflowPresets['official-minimax-h3'] = {id:'official-minimax-h3', name:'MiniMax H3 · 官方 API', badge:'官方直连', description:'直接调用 MiniMax 官方视频 API；该接口的图片语义是首帧，因此本站仅开放纯文生。', supports_image:false, supports_style_reference:false, configured:true, mode:'official_api', provider:'minimax', estimated_cost:'按 MiniMax 官方账户实际用量结算'};
+  workflowPresets['official-seedance'] = {id:'official-seedance', name:'Seedance · 火山方舟官方 API', badge:'官方直连', description:'直接调用火山方舟视频生成 API；Seedance 2.x 可将图片作为 reference_image。', supports_image:true, supports_style_reference:true, configured:true, mode:'official_api', provider:'seedance', estimated_cost:'按火山方舟账户实际用量结算'};
   if (!workflowPresets[selectedWorkflow] || !workflowPresets[selectedWorkflow].configured) {
     selectedWorkflow = workflowPresets['rh-seedance-25-text'] ? 'rh-seedance-25-text' : Object.keys(workflowPresets).find(id => workflowPresets[id].configured) || 'official-seedance';
   }
@@ -532,9 +543,10 @@ function updateGenerationStudio() {
   const scriptReady = Boolean(document.querySelector('#video-script-prompt')?.value.trim());
   const workflowReady = Boolean(config.workflow_id && config.prompt_node_id);
   const generatorReady = customMode ? workflowReady : Boolean(preset.configured);
-  const inputReady = standardStyleMode || (preset.requires_image ? Boolean(firstFrameDataUrl) : !firstFrameDataUrl || (customMode ? Boolean(config.image_node_id) : Boolean(preset.supports_image)));
+  const styleReferenceReady = !firstFrameDataUrl || supportsStyleReference(preset);
+  const inputReady = standardStyleMode || styleReferenceReady;
   const note = document.querySelector('#generation-account-note');
-  const styleMode = standardStyleMode ? '风格优先：自动使用原创低模参考图' : firstFrameDataUrl && preset.supports_image ? '风格优先：首帧会锁定造型' : '仅靠文字：画风可能被模型自动美化';
+  const styleMode = standardStyleMode ? '自动使用原创低模风格参考' : firstFrameDataUrl && supportsStyleReference(preset) ? '整片风格参考图已启用' : firstFrameDataUrl ? '当前模型不支持 reference_image' : '纯文生：使用提示词约束画风';
   note.textContent = customMode
     ? `${preset.name} 将使用你的节点配置运行。${firstFrameDataUrl ? '已提供首帧，请确认图片节点有效。' : '未提供首帧，画风不稳定。'}`
     : `${preset.name} · ${styleMode}。费用从${providerId === 'minimax' ? ' MiniMax 官方' : providerId === 'seedance' ? '火山方舟' : ' RunningHub'}账户扣除。`;
@@ -543,7 +555,7 @@ function updateGenerationStudio() {
     {done:scriptReady, label:'视频脚本', detail:scriptReady ? '已确认，可继续修改' : '请填写最终视频脚本'},
     {done:serviceReady && connected, label:'模型账户', detail:!serviceReady ? '服务尚未开放付费任务' : connected ? `${item.name} 已临时连接` : `需要连接 ${item.name}`},
     {done:generatorReady, label:customMode ? '工作流绑定' : '视频通道', detail:generatorReady ? `${preset.name} 已就绪` : customMode ? '填写工作流 ID 与提示词节点' : '该实例等待管理员绑定'},
-    {done:inputReady, label:'画面输入', detail:standardStyleMode ? '原创低模参考图将自动附带' : firstFrameDataUrl ? (inputReady ? (preset.requires_image ? '将同时填入首帧和尾帧进行稳定性验收' : '风格首帧已就绪') : customMode ? '还需填写图片节点 ID' : '该实例不接受首帧') : (preset.requires_image ? '该候选要求先上传一张低模首帧' : preset.supports_image ? '建议添加低模首帧锁定画风' : '纯文生视频，画风不稳定')},
+    {done:inputReady, label:'风格参考', detail:firstFrameDataUrl ? (inputReady ? '图片仅作为整片风格 reference_image' : '当前模型只支持首帧，本站不会错误发送') : (supportsStyleReference(preset) ? '可选：添加整片风格参考图' : '当前模型使用纯文生提示词')},
   ];
   const firstPending = checks.findIndex(check => !check.done);
   document.querySelector('#generation-readiness').innerHTML = checks.map((check, index) => `<li class="${check.done ? 'done' : index === firstPending ? 'current' : 'waiting'}"><i>${check.done ? '✓' : index + 1}</i><span><strong>${escapeHtml(check.label)}</strong><small>${escapeHtml(check.detail)}</small></span></li>`).join('');
@@ -555,7 +567,7 @@ function updateGenerationStudio() {
   else if (!generatorReady && customMode) action.innerHTML = '<button class="primary" type="button" data-open-workflow-config><span>下一步：绑定工作流</span><b>→</b></button>';
   else if (!generatorReady) action.innerHTML = '<button class="primary" type="button" disabled><span>AI 实例待配置</span><b>·</b></button>';
   else if (!inputReady && customMode) action.innerHTML = '<button class="primary" type="button" data-open-workflow-config><span>下一步：填写图片节点</span><b>→</b></button>';
-  else if (!inputReady) action.innerHTML = `<button class="primary" type="button" disabled><span>${preset.requires_image ? '请先上传低模首帧' : '该实例不支持首帧'}</span><b>·</b></button>`;
+  else if (!inputReady) action.innerHTML = '<button class="primary" type="button" disabled><span>该模型不支持风格参考图</span><b>·</b></button>';
   else action.innerHTML = '<button class="primary" type="button" data-submit-runninghub><span>确认费用并生成</span><b>→</b></button>';
 }
 
@@ -585,10 +597,8 @@ function updateWorkflowPreset() {
   details.open = preset.mode === 'workflow' && (!config.workflow_id || !config.prompt_node_id);
   const referenceButton = document.querySelector('[data-use-style-reference]');
   const referenceLabel = referenceButton?.querySelector('span');
-  if (referenceButton) referenceButton.disabled = !preset.supports_image || !preset.configured;
-  if (referenceLabel) referenceLabel.textContent = preset.mode === 'standard_model'
-    ? '仅作风格参考，不复制主体'
-    : '作为实际首帧使用，会继承人物与构图';
+  if (referenceButton) referenceButton.disabled = !supportsStyleReference(preset) || !preset.configured;
+  if (referenceLabel) referenceLabel.textContent = '作为整片风格参考，不指定首帧';
   updateGenerationStudio();
 }
 
@@ -607,10 +617,10 @@ document.addEventListener('change', event => {
   }
   if (event.target.id === 'first-frame') {
     const file = event.target.files[0];
-    if (!file) { firstFrameDataUrl = null; document.querySelector('#frame-name').textContent = '上传实际首帧'; updateGenerationStudio(); return; }
-    if (file.size > 10 * 1024 * 1024) { notify('首帧图片不能超过 10 MB'); event.target.value = ''; return; }
+    if (!file) { firstFrameDataUrl = null; document.querySelector('#frame-name').textContent = '上传整片风格参考图'; updateGenerationStudio(); return; }
+    if (file.size > 10 * 1024 * 1024) { notify('风格参考图不能超过 10 MB'); event.target.value = ''; return; }
     const reader = new FileReader();
-    reader.onload = () => { firstFrameDataUrl = reader.result; document.querySelector('#frame-name').textContent = `${file.name} · 首帧引导`; updateGenerationStudio(); };
+    reader.onload = () => { firstFrameDataUrl = reader.result; document.querySelector('#frame-name').textContent = `${file.name} · 整片风格参考`; updateGenerationStudio(); };
     reader.readAsDataURL(file);
   }
 });
@@ -736,8 +746,7 @@ async function submitRunningHub() {
   if (customMode && (!workflowId || !promptNodeId)) { notify('请填写工作流 ID 和提示词节点 ID'); return; }
   if (customMode && firstFrameDataUrl && !imageNodeId) { notify('上传首帧后需要填写图片节点 ID'); return; }
   if (!customMode && !preset.configured) { notify('所选 AI 实例尚未配置'); return; }
-  if (!customMode && firstFrameDataUrl && !preset.supports_image) { notify('所选 AI 实例不支持首帧输入'); return; }
-  if (preset.requires_image && !firstFrameDataUrl) { notify('该候选实例要求首帧和尾帧，请先上传一张低模首帧'); return; }
+  if (!customMode && firstFrameDataUrl && !supportsStyleReference(preset)) { notify('所选模型只支持首帧，不能把这张图片作为整片风格参考；请移除图片或连接支持 reference_image 的 Seedance 2.x'); return; }
   if (customMode) saveWorkflowConfig(selectedWorkflow, {
     workflow_id:workflowId, prompt_node_id:promptNodeId,
     prompt_field:document.querySelector('#rh-prompt-field').value.trim() || 'text',
@@ -770,7 +779,7 @@ async function submitRunningHub() {
         duration:currentPack.constraint_report?.duration_seconds, ratio:'16:9',
         prompt_node_id:promptNodeId, prompt_field:document.querySelector('#rh-prompt-field').value.trim() || 'text',
         image_node_id:imageNodeId, image_field:document.querySelector('#rh-image-field').value.trim() || 'image',
-        uploaded_file_name:uploadedFileName, first_frame_image:['minimax','seedance'].includes(providerId) ? firstFrameDataUrl : undefined,
+        uploaded_file_name:uploadedFileName, style_reference_image:providerId === 'seedance' ? firstFrameDataUrl : undefined,
         access_password:customMode ? document.querySelector('#rh-access-password').value : undefined,
       }),
     });
@@ -792,7 +801,7 @@ function showJob(job) {
   const presetName = job.model || workflowPresets[job.workflow_preset || selectedWorkflow]?.name || 'RunningHub 任务';
   const detail = job.provider === 'runninghub'
     ? `${escapeHtml(presetName)} · RunningHub · ${job.generation_mode === 'standard_model' ? '多模态标准模型' : ['ai_app','dynamic_ai_app'].includes(job.generation_mode) ? 'AI 实例' : '自定义工作流'}`
-    : `${job.provider === 'seedance' ? `Seedance · 火山方舟 · ${escapeHtml(presetName)}` : 'MiniMax H3'} · ${job.duration || '-'} 秒 · ${job.ratio || '-'} · ${job.input_mode === 'first_frame' ? '首帧引导' : '文本直出'}`;
+    : `${job.provider === 'seedance' ? `Seedance · 火山方舟 · ${escapeHtml(presetName)}` : 'MiniMax H3'} · ${job.duration || '-'} 秒 · ${job.ratio || '-'} · ${job.input_mode === 'style_reference' ? '整片风格参考' : '文本直出'}`;
   status.innerHTML = `<strong>${labels[job.status] || escapeHtml(job.status)}</strong><span>${job.error ? escapeHtml(friendlyJobError(job.error)) : detail}</span>`;
   saveJob(job);
   if (['succeeded','failed','cancelled','expired'].includes(job.status)) {

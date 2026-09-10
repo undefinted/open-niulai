@@ -4,7 +4,7 @@ import { aiAppCatalog, publicAiApp } from '../_lib/runninghub.js';
 export function onRequestGet(context) {
   try {
     const instances = aiAppCatalog(context.env)
-      .filter(instance => instance.transport === 'dynamic_ai_app')
+      .filter(instance => instance.transport === 'dynamic_ai_app' && !instance.requires_image)
       .map(publicAiApp);
     return json({ instances });
   } catch (error) {

@@ -99,12 +99,12 @@ export async function onRequestPost(context) {
     if (payload.provider === 'seedance') {
       const {apiKey:seedanceKey, model} = seedanceCredentials(context.request);
       const duration = Number(payload.duration) <= 5 ? 5 : 10;
-      const requestBody = buildSeedancePayload(payload.prompt, model, duration, String(payload.ratio || '16:9'), payload.first_frame_image || null);
+      const requestBody = buildSeedancePayload(payload.prompt, model, duration, String(payload.ratio || '16:9'), payload.style_reference_image || null);
       const result = await seedanceRequest('POST', '/contents/generations/tasks', seedanceKey, requestBody);
       if (!result.id) throw new Error('火山方舟响应未返回任务 ID，未自动重试以避免重复扣费。');
       const job = {
         id:String(result.id), provider:'seedance', model, status:String(result.status || 'queued').toLowerCase(), duration,
-        ratio:String(payload.ratio || '16:9'), input_mode:payload.first_frame_image ? 'first_frame' : 'text', created_at:Math.floor(Date.now() / 1000),
+        ratio:String(payload.ratio || '16:9'), input_mode:payload.style_reference_image ? 'style_reference' : 'text', created_at:Math.floor(Date.now() / 1000),
         owner:user.id, idempotency_key:idempotencyKey,
       };
       await saveJob(context.env, job);
@@ -112,12 +112,13 @@ export async function onRequestPost(context) {
     }
     if (payload.provider !== 'minimax') return json({ error: '当前站内真实生成支持 RunningHub、MiniMax H3 官方 API 和 Seedance 火山方舟 API。' }, 501);
     const duration = Math.max(4, Math.min(15, Number(payload.duration || 10)));
-    const requestBody = buildPayload(payload.prompt, duration, String(payload.ratio || '16:9'), payload.first_frame_image || null);
+    if (payload.style_reference_image) throw new Error('MiniMax 官方视频接口会把图片当作首帧，不能用于本项目的整片风格参考。请移除参考图后使用纯文生视频。');
+    const requestBody = buildPayload(payload.prompt, duration, String(payload.ratio || '16:9'), null);
     const result = await minimaxRequest('POST', '/v2/video_generation', apiKey, region, requestBody);
     if (!result.task_id) throw new Error('MiniMax 响应未返回任务 ID，未自动重试以避免重复扣费。');
     const job = {
       id: String(result.task_id), provider: 'minimax', model: 'MiniMax-H3', status: 'queued', duration,
-      ratio: requestBody.ratio, input_mode: payload.first_frame_image ? 'first_frame' : 'text', created_at: Math.floor(Date.now() / 1000),
+      ratio: requestBody.ratio, input_mode: 'text', created_at: Math.floor(Date.now() / 1000),
       owner: user.id, idempotency_key: idempotencyKey,
     };
     await saveJob(context.env, job);

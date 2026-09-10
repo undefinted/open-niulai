@@ -347,6 +347,43 @@ test('RunningHub AI instance submits its hidden WebApp mapping', async () => {
   }
 });
 
+test('RunningHub H3 style mode submits the built-in reference through the standard API', async () => {
+  const values = new Map();
+  const kv = {
+    get: async (key, type) => {
+      const value = values.get(key);
+      return type === 'json' && value ? JSON.parse(value) : value;
+    },
+    put: async (key, value) => values.set(key, value),
+  };
+  const env = { SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv };
+  const originalFetch = globalThis.fetch;
+  let providerRequest;
+  globalThis.fetch = async (url, options) => {
+    providerRequest = {url:String(url), body:JSON.parse(options.body)};
+    return Response.json({taskId:'h3-style-task-1', status:'RUNNING', results:null});
+  };
+  try {
+    const response = await createVideoJob({
+      request:new Request('https://myyuanlai.xyz/api/video-jobs', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'X-Provider-Key':'runninghub-test-key', 'Idempotency-Key':'h3style_12345678'},
+        body:JSON.stringify({provider:'runninghub', generation_mode:'ai_app', instance_id:'minimax-h3-style', confirm_paid:true, prompt:'STYLE LOCK: broken CGI cat.', duration:10}),
+      }), env,
+    });
+    const result = await response.json();
+    assert.equal(response.status, 202);
+    assert.equal(result.job.generation_mode, 'standard_model');
+    assert.equal(result.job.input_mode, 'style_reference');
+    assert.match(providerRequest.url, /runninghub\.cn\/openapi\/v2\/minimax\/hailuo-h3\/multimodal-to-video$/);
+    assert.deepEqual(providerRequest.body.imageUrls, ['https://myyuanlai.xyz/style/original-lowpoly-office-reference-v1.png']);
+    assert.equal(providerRequest.body.duration, '10');
+    assert.equal(providerRequest.body.ratio, 'adaptive');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('RunningHub V2 AI instance uses the instance path and direct response contract', async () => {
   const values = new Map();
   const kv = {

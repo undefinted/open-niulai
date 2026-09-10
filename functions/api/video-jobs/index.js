@@ -30,6 +30,23 @@ export async function onRequestPost(context) {
     if (payload.provider === 'runninghub') {
       if (payload.generation_mode === 'ai_app') {
         const instance = getAiApp(context.env, payload.instance_id);
+        if (instance.transport === 'standard_model') {
+          const duration = Math.max(5, Math.min(15, Number(payload.duration || 10)));
+          const referenceUrl = new URL(instance.reference_asset, context.request.url).toString();
+          const data = await runningHubV2Json(instance.endpoint, apiKey, {
+            prompt: String(payload.prompt || '').trim(), imageUrls: [referenceUrl], resolution: '2K',
+            duration: String(duration), ratio: 'adaptive', aigc_watermark: false,
+          });
+          if (!data?.taskId) throw new Error('RunningHub 标准模型未返回任务 ID，未自动重试以避免重复扣费。');
+          const job = {
+            id: String(data.taskId), provider: 'runninghub', model: instance.name,
+            status: String(data.status || 'queued').toLowerCase(), generation_mode: 'standard_model', api_version: 'v2',
+            instance_id: instance.id, input_mode: 'style_reference', created_at: Math.floor(Date.now() / 1000),
+            owner: session.id, idempotency_key: idempotencyKey,
+          };
+          await saveJob(context.env, job);
+          return json({ job: publicJob(job), replayed: false }, 202, responseHeaders);
+        }
         const nodeInfoList = buildAiAppNodeInfo(instance, payload, payload.uploaded_file_name || null);
         const data = instance.api_version === 'v2'
           ? await runningHubV2Json(`/openapi/v2/run/ai-app/${instance.webapp_id}`, apiKey, {

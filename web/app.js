@@ -4,7 +4,7 @@ const toast = document.querySelector('#toast');
 let currentPack = null;
 let pendingCreatorPayload = null;
 let providerState = {providers: [], connected: [], secure_context: false};
-let selectedWorkflow = 'minimax-h3';
+let selectedWorkflow = 'minimax-h3-style';
 let firstFrameDataUrl = null;
 let sessionState = null;
 const activePolls = new Map();
@@ -15,6 +15,7 @@ const creatorDraftKey = 'open-niulai:creator-draft';
 const packDraftKey = 'open-niulai:last-pack';
 const currentPackSchema = '0.2.0';
 let workflowPresets = {
+  'minimax-h3-style': {id:'minimax-h3-style', name:'MiniMax H3 · 风格参考生成', badge:'风格优先', description:'自动附带原创粗粝低模参考图。', supports_image:true, configured:true, mode:'standard_model', uses_builtin_style_reference:true},
   'minimax-h3': {id:'minimax-h3', name:'MiniMax H3 成片实例', badge:'快速出片', description:'适合文本直出、首帧引导和带声音的短片。', supports_image:true, configured:false, mode:'ai_app'},
   'seedance': {id:'seedance', name:'Seedance 成片实例', badge:'高质量', description:'适合强调镜头表现、角色一致性和参考素材的视频。', supports_image:true, configured:false, mode:'ai_app'},
   'custom': {id:'custom', name:'自定义工作流', badge:'专业模式', description:'高级用户可以运行自己在 RunningHub 中保存的工作流。', supports_image:true, configured:true, mode:'workflow'},
@@ -384,7 +385,7 @@ async function loadVideoInstances() {
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'AI 实例目录加载失败');
   const custom = workflowPresets.custom;
-  workflowPresets = Object.fromEntries(result.instances.map(instance => [instance.id, {...instance, mode:'ai_app'}]));
+  workflowPresets = Object.fromEntries(result.instances.map(instance => [instance.id, {...instance, mode:instance.mode || 'ai_app'}]));
   workflowPresets.custom = custom;
   if (!workflowPresets[selectedWorkflow]) selectedWorkflow = Object.keys(workflowPresets)[0] || 'custom';
 }
@@ -415,14 +416,15 @@ function updateGenerationStudio() {
   const config = currentWorkflowConfig();
   const preset = workflowPresets[selectedWorkflow] || workflowPresets.custom;
   const customMode = preset.mode === 'workflow';
+  const standardStyleMode = preset.mode === 'standard_model';
   const serviceReady = providerState.secure_context && providerState.generation_ready !== false;
   const qualityReady = currentPack?.quality_report?.status === 'passed';
   const scriptReady = Boolean(document.querySelector('#video-script-prompt')?.value.trim());
   const workflowReady = Boolean(config.workflow_id && config.prompt_node_id);
   const generatorReady = customMode ? workflowReady : Boolean(preset.configured);
-  const inputReady = !firstFrameDataUrl || (customMode ? Boolean(config.image_node_id) : Boolean(preset.supports_image));
+  const inputReady = standardStyleMode || !firstFrameDataUrl || (customMode ? Boolean(config.image_node_id) : Boolean(preset.supports_image));
   const note = document.querySelector('#generation-account-note');
-  const styleMode = firstFrameDataUrl && preset.supports_image ? '风格优先：首帧会锁定造型' : '仅靠文字：画风可能被模型自动美化';
+  const styleMode = standardStyleMode ? '风格优先：自动使用原创低模参考图' : firstFrameDataUrl && preset.supports_image ? '风格优先：首帧会锁定造型' : '仅靠文字：画风可能被模型自动美化';
   note.textContent = customMode
     ? `${preset.name} 将使用你的节点配置运行。${firstFrameDataUrl ? '已提供首帧，请确认图片节点有效。' : '未提供首帧，画风不稳定。'}`
     : `${preset.name} · ${styleMode}。费用从 RunningHub 账户扣除。`;
@@ -431,7 +433,7 @@ function updateGenerationStudio() {
     {done:scriptReady, label:'视频脚本', detail:scriptReady ? '已确认，可继续修改' : '请填写最终视频脚本'},
     {done:serviceReady && connected, label:'模型账户', detail:!serviceReady ? '服务尚未开放付费任务' : connected ? 'RunningHub 已临时连接' : '需要连接 RunningHub'},
     {done:generatorReady, label:customMode ? '工作流绑定' : 'AI 实例', detail:generatorReady ? `${preset.name} 已就绪` : customMode ? '填写工作流 ID 与提示词节点' : '该实例等待管理员绑定'},
-    {done:inputReady, label:'画面输入', detail:firstFrameDataUrl ? (inputReady ? '风格首帧已就绪' : customMode ? '还需填写图片节点 ID' : '该实例不接受首帧') : (preset.supports_image ? '建议添加低模首帧锁定画风' : '纯文生视频，画风不稳定')},
+    {done:inputReady, label:'画面输入', detail:standardStyleMode ? '原创低模参考图将自动附带' : firstFrameDataUrl ? (inputReady ? '风格首帧已就绪' : customMode ? '还需填写图片节点 ID' : '该实例不接受首帧') : (preset.supports_image ? '建议添加低模首帧锁定画风' : '纯文生视频，画风不稳定')},
   ];
   const firstPending = checks.findIndex(check => !check.done);
   document.querySelector('#generation-readiness').innerHTML = checks.map((check, index) => `<li class="${check.done ? 'done' : index === firstPending ? 'current' : 'waiting'}"><i>${check.done ? '✓' : index + 1}</i><span><strong>${escapeHtml(check.label)}</strong><small>${escapeHtml(check.detail)}</small></span></li>`).join('');
@@ -454,8 +456,8 @@ function updateWorkflowPreset() {
   select.value = selectedWorkflow;
   const preset = workflowPresets[selectedWorkflow];
   const config = getWorkflowConfig(selectedWorkflow);
-  const availability = preset.mode === 'ai_app' ? (preset.configured ? `可用 · ${preset.estimated_cost}` : '实例尚未由管理员绑定') : '高级模式';
-  const styleFit = preset.supports_image ? '风格适配：可用首帧锁定' : '风格适配：较弱，仅靠文字可能写实化';
+  const availability = preset.mode !== 'workflow' ? (preset.configured ? `可用 · ${preset.estimated_cost}` : '实例尚未由管理员绑定') : '高级模式';
+  const styleFit = preset.uses_builtin_style_reference ? '风格适配：强制附带原创参考图' : preset.supports_image ? '风格适配：可用首帧锁定' : '风格适配：较弱，仅靠文字可能写实化';
   document.querySelector('#workflow-summary').innerHTML = `<span class="provider-badge">${escapeHtml(preset.badge)}</span><strong>${escapeHtml(preset.name)}</strong><p>${escapeHtml(preset.description)} · ${escapeHtml(styleFit)} · ${escapeHtml(availability)}</p>`;
   document.querySelector('#workflow-config-title').textContent = `绑定 ${preset.name} 工作流`;
   document.querySelector('#rh-workflow-id').value = config.workflow_id || '';
@@ -577,6 +579,7 @@ async function submitRunningHub() {
   if (currentPack.quality_report?.status !== 'passed') { notify('质量门禁未通过，请重新生成并检查失败项'); return; }
   const preset = workflowPresets[selectedWorkflow];
   const customMode = preset.mode === 'workflow';
+  const standardStyleMode = preset.mode === 'standard_model';
   const workflowId = document.querySelector('#rh-workflow-id').value.trim();
   const promptNodeId = document.querySelector('#rh-prompt-node').value.trim();
   const imageNodeId = document.querySelector('#rh-image-node').value.trim();
@@ -597,7 +600,7 @@ async function submitRunningHub() {
   status.innerHTML = `<strong>正在准备${customMode ? '工作流' : ' AI 实例'}</strong><span>正在上传素材并创建付费任务，请勿重复点击。</span>`;
   try {
     let uploadedFileName = null;
-    if (firstFrameDataUrl) {
+    if (firstFrameDataUrl && !standardStyleMode) {
       const upload = await fetch('/api/runninghub/uploads', {
         method:'POST', headers:{'Content-Type':'application/json', ...providerHeaders('runninghub')},
         body:JSON.stringify({data_url:firstFrameDataUrl, filename:'open-niulai-first-frame.png'}),
@@ -636,7 +639,7 @@ function showJob(job) {
   status.classList.remove('hidden');
   const presetName = job.model || workflowPresets[job.workflow_preset || selectedWorkflow]?.name || 'RunningHub 任务';
   const detail = job.provider === 'runninghub'
-    ? `${escapeHtml(presetName)} · RunningHub · ${job.generation_mode === 'ai_app' ? 'AI 实例' : '自定义工作流'}`
+    ? `${escapeHtml(presetName)} · RunningHub · ${job.generation_mode === 'standard_model' ? '多模态标准模型' : job.generation_mode === 'ai_app' ? 'AI 实例' : '自定义工作流'}`
     : `MiniMax H3 · ${job.duration || '-'} 秒 · ${job.ratio || '-'} · ${job.input_mode === 'first_frame' ? '首帧引导' : '文本直出'}`;
   status.innerHTML = `<strong>${labels[job.status] || escapeHtml(job.status)}</strong><span>${job.error ? escapeHtml(job.error) : detail}</span>`;
   saveJob(job);

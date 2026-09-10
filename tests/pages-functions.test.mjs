@@ -7,7 +7,7 @@ import { generateScriptCandidates } from '../functions/_lib/script-providers.js'
 import { evaluatePack } from '../functions/_lib/quality.js';
 import { buildPayload } from '../functions/_lib/minimax.js';
 import { buildSeedancePayload, verifySeedanceConnection } from '../functions/_lib/seedance.js';
-import { aiAppCatalog, buildAiAppNodeInfo, buildNodeInfo, normalizeOutputs, publicAiApp } from '../functions/_lib/runninghub.js';
+import { adaptDiscoveredNodeInfo, aiAppCatalog, buildAiAppNodeInfo, buildNodeInfo, normalizeOutputs, publicAiApp } from '../functions/_lib/runninghub.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, getSession, validateIdempotencyKey } from '../functions/_lib/session.js';
 import { authenticatedUser, loginUser, registerUser } from '../functions/_lib/auth.js';
 import { onRequestPost as createVideoJob } from '../functions/api/video-jobs/index.js';
@@ -143,6 +143,33 @@ test('RunningHub maps prompt and uploaded first frame to workflow nodes', () => 
     { nodeId: '6', fieldName: 'text', fieldValue: 'An awkward cat walks.' },
     { nodeId: '12', fieldName: 'image', fieldValue: 'api/input/cat.png' },
   ]);
+});
+
+test('RunningHub dynamically adapts a current AI app call demo without exposing its WebApp ID', () => {
+  const instance = aiAppCatalog({}).find(item => item.id === 'rh-seedance-25-text');
+  assert.equal(instance.configured, true);
+  assert.equal(instance.transport, 'dynamic_ai_app');
+  assert.equal(publicAiApp(instance).webapp_id, undefined);
+  const result = adaptDiscoveredNodeInfo({curl:`curl --data '{"webappId":"2086711389963509762","nodeInfoList":[{"nodeId":"1","fieldName":"prompt","fieldValue":"old"},{"nodeId":"1","fieldName":"duration","fieldValue":"30"},{"nodeId":"1","fieldName":"ratio","fieldValue":"adaptive"},{"nodeId":"1","fieldName":"resolution","fieldValue":"720p"}]}'`}, {
+    prompt:'STYLE LOCK: broken CGI cat.', duration:10, ratio:'16:9',
+  });
+  assert.deepEqual(result.nodeInfoList, [
+    {nodeId:'1', fieldName:'prompt', fieldValue:'STYLE LOCK: broken CGI cat.'},
+    {nodeId:'1', fieldName:'duration', fieldValue:'10'},
+    {nodeId:'1', fieldName:'ratio', fieldValue:'16:9'},
+    {nodeId:'1', fieldName:'resolution', fieldValue:'720p'},
+  ]);
+});
+
+test('RunningHub dynamic frame app fills both first and last frame inputs', () => {
+  const result = adaptDiscoveredNodeInfo({nodeInfoList:[
+    {nodeId:'1', fieldName:'prompt', fieldValue:'old'},
+    {nodeId:'2', fieldName:'first_frame', fieldValue:''},
+    {nodeId:'3', fieldName:'last_frame', fieldValue:''},
+  ]}, {prompt:'A low-poly cat slides.', duration:4}, 'api/input/cat.png');
+  assert.equal(result.imageFields, 2);
+  assert.equal(result.nodeInfoList[1].fieldValue, 'api/input/cat.png');
+  assert.equal(result.nodeInfoList[2].fieldValue, 'api/input/cat.png');
 });
 
 test('RunningHub output normalization prefers video results', () => {

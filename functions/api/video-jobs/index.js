@@ -1,6 +1,6 @@
 import { errorResponse, json, readJson } from '../../_lib/http.js';
 import { buildPayload, credentials, minimaxRequest } from '../../_lib/minimax.js';
-import { buildAiAppNodeInfo, buildNodeInfo, getAiApp, runningHubJson, runningHubV2Json } from '../../_lib/runninghub.js';
+import { adaptDiscoveredNodeInfo, buildAiAppNodeInfo, buildNodeInfo, getAiApp, runningHubAiAppDemo, runningHubJson, runningHubV2Json } from '../../_lib/runninghub.js';
 import { buildSeedancePayload, seedanceCredentials, seedanceRequest } from '../../_lib/seedance.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, publicJob, validateIdempotencyKey } from '../../_lib/session.js';
 import { requireUser } from '../../_lib/auth.js';
@@ -51,7 +51,16 @@ export async function onRequestPost(context) {
           await saveJob(context.env, job);
           return json({ job: publicJob(job), replayed: false }, 202, responseHeaders);
         }
-        const nodeInfoList = buildAiAppNodeInfo(instance, payload, payload.uploaded_file_name || null);
+        let nodeInfoList;
+        if (instance.transport === 'dynamic_ai_app') {
+          if (instance.requires_image && !payload.uploaded_file_name) throw new Error('该候选实例要求首帧和尾帧，请先上传低模首帧。');
+          const demo = await runningHubAiAppDemo(apiKey, instance.webapp_id);
+          const adapted = adaptDiscoveredNodeInfo(demo, payload, payload.uploaded_file_name || null);
+          if (instance.requires_image && adapted.imageFields < 2) throw new Error('未能识别该实例的首帧和尾帧输入项，已停止提交以避免误扣费。');
+          nodeInfoList = adapted.nodeInfoList;
+        } else {
+          nodeInfoList = buildAiAppNodeInfo(instance, payload, payload.uploaded_file_name || null);
+        }
         const data = instance.api_version === 'v2'
           ? await runningHubV2Json(`/openapi/v2/run/ai-app/${instance.webapp_id}`, apiKey, {
             nodeInfoList, instanceType: instance.instance_type, usePersonalQueue: false,
@@ -60,7 +69,7 @@ export async function onRequestPost(context) {
         if (!data?.taskId) throw new Error('RunningHub AI 实例未返回任务 ID，未自动重试以避免重复扣费。');
         const job = {
           id: String(data.taskId), provider: 'runninghub', model: instance.name,
-          status: String(data.status || data.taskStatus || 'queued').toLowerCase(), generation_mode: 'ai_app',
+          status: String(data.status || data.taskStatus || 'queued').toLowerCase(), generation_mode: instance.transport === 'dynamic_ai_app' ? 'dynamic_ai_app' : 'ai_app',
           api_version: instance.api_version,
           instance_id: instance.id, input_mode: payload.uploaded_file_name ? 'first_frame' : 'text',
           created_at: Math.floor(Date.now() / 1000), owner: user.id, idempotency_key: idempotencyKey,

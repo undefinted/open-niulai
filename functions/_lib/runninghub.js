@@ -2,6 +2,21 @@ const BASE_URL = 'https://www.runninghub.ai';
 const CN_V2_BASE_URL = 'https://www.runninghub.cn';
 const VIDEO_TYPES = new Set(['mp4', 'webm', 'mov', 'm4v']);
 
+const DISCOVERED_AI_APPS = [
+  {
+    id: 'rh-seedance-25-text', name: 'Seedance 2.5 文生视频 · 动态实例', badge: '候选 1',
+    description: '提交前读取实例当前公开参数，自动映射提示词、时长、比例和清晰度。',
+    supports_image: false, transport: 'dynamic_ai_app', webapp_id: '2086711389963509762', enabled: true,
+    estimated_cost: '以 RunningHub 实例页实时显示为准',
+  },
+  {
+    id: 'rh-seedance-15-frames', name: 'Seedance 1.5 Pro 首尾帧 · 动态实例', badge: '候选 2',
+    description: '高运行量首尾帧实例；同一张低模首帧会同时作为首帧和尾帧，优先验证稳定出片。',
+    supports_image: true, requires_image: true, transport: 'dynamic_ai_app', webapp_id: '2004172439431094273', enabled: true,
+    estimated_cost: '实例作者标注 480p / 4 秒约 0.6 元，实际以 RunningHub 结算为准',
+  },
+];
+
 function httpsUrl(value) {
   try {
     const url = new URL(String(value || ''));
@@ -46,7 +61,8 @@ function cleanInstance(raw, fallback = {}) {
   const webappId = String(raw?.webapp_id || raw?.webappId || '').trim();
   const promptNodeId = String(raw?.prompt_node_id || raw?.promptNodeId || '').trim();
   const requestedInstanceType = String(raw?.instance_type || raw?.instanceType || 'default').trim().toLowerCase();
-  const transport = String(raw?.transport || fallback.transport || 'ai_app') === 'standard_model' ? 'standard_model' : 'ai_app';
+  const requestedTransport = String(raw?.transport || fallback.transport || 'ai_app');
+  const transport = ['standard_model', 'dynamic_ai_app'].includes(requestedTransport) ? requestedTransport : 'ai_app';
   const endpoint = String(raw?.endpoint || fallback.endpoint || '').trim();
   const referenceAsset = String(raw?.reference_asset || raw?.referenceAsset || fallback.reference_asset || '').trim();
   const standardEnabled = raw?.enabled === true;
@@ -60,9 +76,10 @@ function cleanInstance(raw, fallback = {}) {
     preview_url: httpsUrl(raw?.preview_url || raw?.previewUrl),
     estimated_cost: String(raw?.estimated_cost || raw?.estimatedCost || '以 RunningHub 提交页为准').slice(0, 80),
     supports_image: raw?.supports_image ?? raw?.supportsImage ?? fallback.supports_image ?? false,
+    requires_image: raw?.requires_image ?? raw?.requiresImage ?? fallback.requires_image ?? false,
     configured: transport === 'standard_model'
       ? standardEnabled && endpoint === '/openapi/v2/minimax/hailuo-h3/multimodal-to-video' && /^\/[A-Za-z0-9/_.-]+$/.test(referenceAsset)
-      : aiAppMapped && verified,
+      : transport === 'dynamic_ai_app' ? standardEnabled && /^\d{6,30}$/.test(webappId) : aiAppMapped && verified,
     transport, endpoint, reference_asset: referenceAsset, enabled: standardEnabled, verified,
     availability_reason: String(raw?.availability_reason || raw?.availabilityReason || (aiAppMapped && !verified ? '已绑定，但尚未通过真实成片验收。' : fallback.availability_reason) || '').slice(0, 180),
     api_version: String(raw?.api_version || raw?.apiVersion || 'legacy') === 'v2' ? 'v2' : 'legacy',
@@ -94,7 +111,8 @@ export function aiAppCatalog(env = {}) {
   const byId = new Map(configured.map(item => [item.id, item]));
   const defaults = DEFAULT_AI_APPS.map(item => cleanInstance(byId.get(item.id) || {}, item));
   const extras = configured.filter(item => !DEFAULT_AI_APPS.some(defaultItem => defaultItem.id === item.id));
-  return [...defaults, ...extras];
+  const dynamicApps = DISCOVERED_AI_APPS.map(item => cleanInstance(item)).filter(Boolean);
+  return [...defaults, ...dynamicApps, ...extras];
 }
 
 export function publicAiApp(instance) {
@@ -145,6 +163,74 @@ export function buildAiAppNodeInfo(instance, payload, uploadedFileName = null) {
     fieldValue: String(field.field_value ?? field.fieldValue ?? ''),
   });
   return nodes;
+}
+
+function findNodeInfoList(value, seen = new Set()) {
+  if (!value || seen.has(value)) return null;
+  if (typeof value === 'object') {
+    seen.add(value);
+    if (Array.isArray(value.nodeInfoList)) return value.nodeInfoList;
+    for (const child of Object.values(value)) {
+      const found = findNodeInfoList(child, seen);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof value !== 'string' || !value.includes('nodeInfoList')) return null;
+  const first = value.indexOf('{');
+  const last = value.lastIndexOf('}');
+  if (first < 0 || last <= first) return null;
+  try { return findNodeInfoList(JSON.parse(value.slice(first, last + 1)), seen); } catch { return null; }
+}
+
+function normalizedField(node) {
+  return String(node?.fieldName || node?.field_name || '').trim().toLowerCase();
+}
+
+function normalizedNode(node) {
+  const nodeId = assertNodeId(node?.nodeId || node?.node_id, '实例参数节点');
+  const fieldName = assertNodeId(node?.fieldName || node?.field_name, '实例参数字段');
+  return { nodeId, fieldName, fieldValue: String(node?.fieldValue ?? node?.field_value ?? '') };
+}
+
+export function adaptDiscoveredNodeInfo(demo, payload, uploadedFileName = null) {
+  const prompt = String(payload.prompt || '').trim();
+  if (!prompt || prompt.length > 7000) throw new Error('视频提示词长度必须为 1-7000 个字符。');
+  const source = findNodeInfoList(demo);
+  if (!Array.isArray(source) || !source.length) throw new Error('RunningHub 未返回该实例的公开输入参数，已停止提交以避免误扣费。');
+  const nodes = source.map(normalizedNode);
+  const promptIndex = nodes.findIndex((node, index) => {
+    const field = normalizedField(source[index]);
+    return !field.includes('negative') && /prompt|positive|text|description/.test(field);
+  });
+  if (promptIndex < 0) throw new Error('无法识别该实例的提示词输入项，已停止提交以避免误扣费。');
+  nodes[promptIndex].fieldValue = prompt;
+
+  let imageFields = 0;
+  nodes.forEach((node, index) => {
+    const field = normalizedField(source[index]);
+    if (/(?:^|[_-])image(?:$|[_-])|(?:first|last|start|end)[_-]?frame/.test(field)) {
+      if (uploadedFileName) { node.fieldValue = uploadedFileName; imageFields += 1; }
+      return;
+    }
+    if (/^(?:duration|seconds|length)(?:[_-]|$)/.test(field)) node.fieldValue = String(Math.max(4, Math.min(10, Number(payload.duration || 4))));
+    if (/^(?:ratio|aspect)(?:[_-]|$)/.test(field)) node.fieldValue = String(payload.ratio || '16:9');
+    if (/^(?:resolution|quality)(?:[_-]|$)/.test(field) && /(?:480|720|1080|2k)/i.test(node.fieldValue)) node.fieldValue = /480/i.test(node.fieldValue) ? '480p' : '720p';
+  });
+  return { nodeInfoList: nodes, imageFields };
+}
+
+export async function runningHubAiAppDemo(apiKey, webappId) {
+  assertKey(apiKey);
+  const id = String(webappId || '').trim();
+  if (!/^\d{6,30}$/.test(id)) throw new Error('RunningHub AI 实例 ID 无效。');
+  const url = new URL('/api/webapp/apiCallDemo', CN_V2_BASE_URL);
+  url.searchParams.set('apiKey', apiKey);
+  url.searchParams.set('webappId', id);
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.code !== 0) throw new Error(`RunningHub ${result.code ?? response.status}：${result.msg || '无法读取实例公开参数'}`);
+  return result.data;
 }
 
 export function buildNodeInfo(payload, uploadedFileName = null) {

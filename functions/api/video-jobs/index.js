@@ -2,6 +2,7 @@ import { errorResponse, json, readJson } from '../../_lib/http.js';
 import { buildPayload, credentials, minimaxRequest } from '../../_lib/minimax.js';
 import { buildAiAppNodeInfo, buildNodeInfo, getAiApp, runningHubJson, runningHubV2Json } from '../../_lib/runninghub.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, publicJob, validateIdempotencyKey } from '../../_lib/session.js';
+import { requireUser } from '../../_lib/auth.js';
 
 const JOB_TTL = 7 * 24 * 60 * 60;
 
@@ -17,15 +18,16 @@ export async function onRequestPost(context) {
   try {
     assertPaidRuntime(context.request, context.env);
     const session = await ensureSession(context.request, context.env);
+    const { user } = await requireUser(context.request, context.env);
     const idempotencyKey = validateIdempotencyKey(context.request);
     const responseHeaders = session.cookie ? { 'Set-Cookie': session.cookie } : {};
     if (context.env.JOBS) {
-      const existing = await context.env.JOBS.get(`request:${session.id}:${idempotencyKey}`, 'json');
+      const existing = await context.env.JOBS.get(`request:${user.id}:${idempotencyKey}`, 'json');
       if (existing) return json({ job: publicJob(existing), replayed: true }, 200, responseHeaders);
     }
     const payload = await readJson(context.request, 16 * 1024 * 1024);
     if (payload.confirm_paid !== true) throw new Error('提交付费任务前必须明确确认费用。');
-    await consumeRateLimit(context.env, session.id);
+    await consumeRateLimit(context.env, user.id);
     const { apiKey, region } = credentials(context.request);
     if (payload.provider === 'runninghub') {
       if (payload.generation_mode === 'ai_app') {
@@ -43,7 +45,7 @@ export async function onRequestPost(context) {
             id: String(data.taskId), provider: 'runninghub', model: instance.name,
             status: String(data.status || 'queued').toLowerCase(), generation_mode: 'standard_model', api_version: 'v2',
             instance_id: instance.id, input_mode: 'style_reference', created_at: Math.floor(Date.now() / 1000),
-            owner: session.id, idempotency_key: idempotencyKey,
+            owner: user.id, idempotency_key: idempotencyKey,
           };
           await saveJob(context.env, job);
           return json({ job: publicJob(job), replayed: false }, 202, responseHeaders);
@@ -60,7 +62,7 @@ export async function onRequestPost(context) {
           status: String(data.status || data.taskStatus || 'queued').toLowerCase(), generation_mode: 'ai_app',
           api_version: instance.api_version,
           instance_id: instance.id, input_mode: payload.uploaded_file_name ? 'first_frame' : 'text',
-          created_at: Math.floor(Date.now() / 1000), owner: session.id, idempotency_key: idempotencyKey,
+          created_at: Math.floor(Date.now() / 1000), owner: user.id, idempotency_key: idempotencyKey,
         };
         await saveJob(context.env, job);
         return json({ job: publicJob(job), replayed: false }, 202, responseHeaders);
@@ -79,7 +81,7 @@ export async function onRequestPost(context) {
         status: String(data.taskStatus || 'queued').toLowerCase(), workflow_id: workflowId,
         workflow_preset: String(payload.workflow_preset || 'custom'),
         input_mode: payload.uploaded_file_name ? 'first_frame' : 'text', created_at: Math.floor(Date.now() / 1000),
-        owner: session.id, idempotency_key: idempotencyKey,
+        owner: user.id, idempotency_key: idempotencyKey,
       };
       await saveJob(context.env, job);
       return json({ job: publicJob(job), replayed: false }, 202, responseHeaders);
@@ -92,7 +94,7 @@ export async function onRequestPost(context) {
     const job = {
       id: String(result.task_id), provider: 'minimax', model: 'MiniMax-H3', status: 'queued', duration,
       ratio: requestBody.ratio, input_mode: payload.first_frame_image ? 'first_frame' : 'text', created_at: Math.floor(Date.now() / 1000),
-      owner: session.id, idempotency_key: idempotencyKey,
+      owner: user.id, idempotency_key: idempotencyKey,
     };
     await saveJob(context.env, job);
     return json({ job: publicJob(job), replayed: false }, 202, responseHeaders);

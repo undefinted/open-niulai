@@ -12,6 +12,7 @@
     <a class="brand" href="/" aria-label="Open NiuLai 首页"><span class="brand-mark">来</span><strong>Open NiuLai</strong></a>
     <div class="top-actions">
       <span id="service-status" class="status"><i></i>正在检查服务</span>
+      <button id="account-open" class="connection-trigger" type="button">注册 / 登录</button>
       <button id="connections-open" class="connection-trigger" type="button">连接模型账户</button>
       <a class="icon-link" href="https://github.com/undefinted/open-niulai" target="_blank" rel="noreferrer" title="GitHub" aria-label="GitHub">↗</a>
     </div>
@@ -127,6 +128,19 @@
     <p class="connection-intro">千问或 DeepSeek 用于生成多样脚本，RunningHub 用于生成视频。密钥仅保存在当前标签页，关闭后自动清除。</p>
     <div id="security-notice" class="security-notice hidden"></div>
     <div id="provider-list" class="provider-list" aria-live="polite"></div>
+  </dialog>
+  <dialog id="account-dialog" aria-labelledby="account-title">
+    <div class="dialog-head"><div><p class="eyebrow">个人账户</p><h2 id="account-title">登录 Open NiuLai</h2></div><button id="account-close" class="dialog-close" type="button" aria-label="关闭">×</button></div>
+    <div id="account-guest" class="account-panel">
+      <div class="auth-tabs" role="tablist" aria-label="账户操作"><button type="button" class="active" data-auth-mode="login">登录</button><button type="button" data-auth-mode="register">注册</button></div>
+      <form id="account-form" class="account-form">
+        <label>邮箱<input name="email" type="email" autocomplete="email" maxlength="160" required placeholder="name@example.com"></label>
+        <label>密码<input name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required placeholder="至少 8 个字符"></label>
+        <button class="primary" type="submit"><span>登录</span><b>→</b></button>
+      </form>
+      <p class="account-note">账户用于隔离你的任务和使用记录。模型 API Key 仍只保存在当前标签页，不上传到本站数据库。</p>
+    </div>
+    <div id="account-user" class="account-panel hidden"><span class="provider-badge">已登录</span><h3 id="account-email"></h3><p>视频任务将归属到该账户，可与其他用户安全隔离。</p><button id="account-logout" class="secondary" type="button">退出登录</button></div>
   </dialog>
   <div id="toast" role="status"></div>
   <script src="/app.js"></script>

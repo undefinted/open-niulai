@@ -8,8 +8,17 @@ import { evaluatePack } from '../functions/_lib/quality.js';
 import { buildPayload } from '../functions/_lib/minimax.js';
 import { aiAppCatalog, buildAiAppNodeInfo, buildNodeInfo, normalizeOutputs, publicAiApp } from '../functions/_lib/runninghub.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, getSession, validateIdempotencyKey } from '../functions/_lib/session.js';
+import { authenticatedUser, loginUser, registerUser } from '../functions/_lib/auth.js';
 import { onRequestPost as createVideoJob } from '../functions/api/video-jobs/index.js';
 import { onRequestPost as submitFeedback } from '../functions/api/feedback.js';
+
+async function signInTestUser(env, url = 'http://127.0.0.1/api/session') {
+  const session = await ensureSession(new Request(url), env);
+  const userId = crypto.randomUUID();
+  await env.USERS.put(`session:${session.id}`, userId);
+  await env.USERS.put(`user:${userId}`, JSON.stringify({id:userId, email:'test@example.com', created_at:0}));
+  return { userId, cookie:session.cookie.split(';')[0] };
+}
 
 test('Pages pack builder preserves the web contract', () => {
   const pack = createPack({ subject: '猫', prompt: '一只加班的猫试图逃离办公室', duration: 10, template: 'ad_hook' });
@@ -198,6 +207,27 @@ test('signed anonymous sessions survive valid cookies and reject tampering', asy
   assert.equal(tampered, null);
 });
 
+test('registered accounts store only a salted password hash and can log in', async () => {
+  const values = new Map();
+  const users = {
+    get:async (key, type) => {
+      const value = values.get(key);
+      return type === 'json' && value ? JSON.parse(value) : value;
+    },
+    put:async (key, value) => values.set(key, value),
+    delete:async key => values.delete(key),
+  };
+  const env = {SESSION_SECRET:'a-test-secret-that-is-long-enough', USERS:users};
+  const registered = await registerUser(new Request('https://example.com/api/auth/register'), env, {email:'USER@example.com', password:'correct-horse'});
+  assert.equal(registered.user.email, 'user@example.com');
+  assert.doesNotMatch([...values.values()].join(''), /correct-horse/);
+  const cookie = registered.session.cookie.split(';')[0];
+  assert.equal((await authenticatedUser(new Request('https://example.com/api/session', {headers:{Cookie:cookie}}), env)).user.id, registered.user.id);
+  const loggedIn = await loginUser(new Request('https://example.com/api/auth/login'), env, {email:'user@example.com', password:'correct-horse'});
+  assert.equal(loggedIn.user.id, registered.user.id);
+  await assert.rejects(() => loginUser(new Request('https://example.com/api/auth/login'), env, {email:'user@example.com', password:'wrong-pass'}), error => error.status === 401);
+});
+
 test('paid requests require a stable idempotency key', () => {
   assert.equal(validateIdempotencyKey(new Request('https://example.com', { headers: { 'Idempotency-Key': 'task_12345678' } })), 'task_12345678');
   assert.throws(() => validateIdempotencyKey(new Request('https://example.com')), /防重复/);
@@ -231,11 +261,14 @@ test('public UI includes recovery history and legal disclosures', () => {
   assert.match(html, /AI 智能生成 3 版/);
   assert.match(html, /name="script_provider" value="qwen"/);
   assert.match(html, /name="script_provider" value="deepseek"/);
+  assert.match(html, /id="account-dialog"/);
+  assert.match(source, /MiniMax H3 · 官方 API/);
+  assert.match(source, /Seedance · 火山方舟官方 API/);
   assert.match(html, /data-subject="猫" data-template="ad_hook" data-tone="workplace"/);
   assert.match(html, /data-line="最后改一次" data-duration="10"/);
   assert.match(source, /Idempotency-Key/);
-  assert.match(source, /open-niulai:video-jobs/);
-  assert.match(source, /open-niulai:creator-draft/);
+  assert.match(source, /open-niulai:\$\{accountScope\(\)\}:video-jobs/);
+  assert.match(source, /open-niulai:\$\{accountScope\(\)\}:creator-draft/);
   assert.match(source, /generation-readiness/);
   assert.match(source, /data-use-style-reference/);
   assert.match(source, /作为实际首帧使用，会继承人物与构图/);
@@ -253,21 +286,21 @@ test('feedback is accepted only for a completed job owned by the signed session'
     },
     put: async (key, value) => values.set(key, value),
   };
-  const env = { SESSION_SECRET: 'a-test-secret-that-is-long-enough', JOBS: kv, RATE_LIMITS: kv };
-  const sessionResponse = await ensureSession(new Request('http://127.0.0.1/api/session'), env);
+  const env = { SESSION_SECRET: 'a-test-secret-that-is-long-enough', JOBS: kv, RATE_LIMITS: kv, USERS:kv };
+  const auth = await signInTestUser(env);
   await kv.put('job:runninghub:job-1', JSON.stringify({
-    id:'job-1', provider:'runninghub', owner:sessionResponse.id, status:'succeeded', video_url:'https://example.com/result.mp4', workflow_preset:'seedance',
+    id:'job-1', provider:'runninghub', owner:auth.userId, status:'succeeded', video_url:'https://example.com/result.mp4', workflow_preset:'seedance',
   }));
   const response = await submitFeedback({
     request:new Request('http://127.0.0.1/api/feedback', {
       method:'POST',
-      headers:{'Content-Type':'application/json', Cookie:sessionResponse.cookie.split(';')[0]},
+      headers:{'Content-Type':'application/json', Cookie:auth.cookie},
       body:JSON.stringify({job_id:'job-1', provider:'runninghub', rating:4, reason:'quality', comment:'动作略显僵硬'}),
     }),
     env,
   });
   assert.equal(response.status, 201);
-  const stored = [...values.entries()].find(([key]) => key.startsWith(`feedback:${sessionResponse.id}:`));
+  const stored = [...values.entries()].find(([key]) => key.startsWith(`feedback:${auth.userId}:`));
   assert.ok(stored);
   assert.doesNotMatch(stored[1], /API Key|test-secret/);
 });
@@ -281,7 +314,8 @@ test('a repeated paid request replays the stored RunningHub job without a second
     },
     put: async (key, value) => values.set(key, value),
   };
-  const env = { SESSION_SECRET: 'a-test-secret-that-is-long-enough', JOBS: kv, RATE_LIMITS: kv };
+  const env = { SESSION_SECRET: 'a-test-secret-that-is-long-enough', JOBS: kv, RATE_LIMITS: kv, USERS:kv };
+  const auth = await signInTestUser(env);
   const body = JSON.stringify({
     provider: 'runninghub', confirm_paid: true, workflow_id: '123456789', workflow_preset: 'minimax-h3',
     prompt: 'An awkward cat walks.', prompt_node_id: '6', prompt_field: 'text',
@@ -293,9 +327,8 @@ test('a repeated paid request replays the stored RunningHub job without a second
     return Response.json({ code: 0, data: { taskId: 'rh-task-1', taskStatus: 'queued' } });
   };
   try {
-    const first = await createVideoJob({ request: new Request('http://127.0.0.1/api/video-jobs', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Provider-Key': 'runninghub-test-key', 'Idempotency-Key': 'request_12345678' }, body }), env });
-    const cookie = first.headers.get('set-cookie').split(';')[0];
-    const second = await createVideoJob({ request: new Request('http://127.0.0.1/api/video-jobs', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Provider-Key': 'runninghub-test-key', 'Idempotency-Key': 'request_12345678', Cookie: cookie }, body }), env });
+    const first = await createVideoJob({ request: new Request('http://127.0.0.1/api/video-jobs', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Provider-Key': 'runninghub-test-key', 'Idempotency-Key': 'request_12345678', Cookie:auth.cookie }, body }), env });
+    const second = await createVideoJob({ request: new Request('http://127.0.0.1/api/video-jobs', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Provider-Key': 'runninghub-test-key', 'Idempotency-Key': 'request_12345678', Cookie:auth.cookie }, body }), env });
     assert.equal(first.status, 202);
     assert.equal(second.status, 200);
     assert.equal((await second.json()).replayed, true);
@@ -316,11 +349,12 @@ test('RunningHub AI instance submits its hidden WebApp mapping', async () => {
     put: async (key, value) => values.set(key, value),
   };
   const env = {
-    SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv,
+    SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv, USERS:kv,
     RUNNINGHUB_AI_APPS:JSON.stringify([{
       id:'minimax-h3', name:'MiniMax H3 成片实例', webappId:'123456789', promptNodeId:'6', promptField:'text',
     }]),
   };
+  const auth = await signInTestUser(env);
   const originalFetch = globalThis.fetch;
   let providerRequest;
   globalThis.fetch = async (url, options) => {
@@ -331,7 +365,7 @@ test('RunningHub AI instance submits its hidden WebApp mapping', async () => {
     const response = await createVideoJob({
       request:new Request('http://127.0.0.1/api/video-jobs', {
         method:'POST',
-        headers:{ 'Content-Type':'application/json', 'X-Provider-Key':'runninghub-test-key', 'Idempotency-Key':'aiapp_12345678' },
+        headers:{ 'Content-Type':'application/json', 'X-Provider-Key':'runninghub-test-key', 'Idempotency-Key':'aiapp_12345678', Cookie:auth.cookie },
         body:JSON.stringify({ provider:'runninghub', generation_mode:'ai_app', instance_id:'minimax-h3', confirm_paid:true, prompt:'A cat walks.' }),
       }),
       env,
@@ -359,13 +393,14 @@ test('RunningHub H3 style mode submits the built-in reference through the standa
     put: async (key, value) => values.set(key, value),
   };
   const env = {
-    SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv,
+    SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv, USERS:kv,
     RUNNINGHUB_AI_APPS:JSON.stringify([{
       id:'minimax-h3-style', enabled:true, transport:'standard_model',
       endpoint:'/openapi/v2/minimax/hailuo-h3/multimodal-to-video',
       referenceAsset:'/style/original-lowpoly-office-reference-v1.png',
     }]),
   };
+  const auth = await signInTestUser(env, 'https://myyuanlai.xyz/api/session');
   const originalFetch = globalThis.fetch;
   let providerRequest;
   globalThis.fetch = async (url, options) => {
@@ -376,7 +411,7 @@ test('RunningHub H3 style mode submits the built-in reference through the standa
     const response = await createVideoJob({
       request:new Request('https://myyuanlai.xyz/api/video-jobs', {
         method:'POST',
-        headers:{'Content-Type':'application/json', 'X-Provider-Key':'runninghub-test-key', 'Idempotency-Key':'h3style_12345678'},
+        headers:{'Content-Type':'application/json', 'X-Provider-Key':'runninghub-test-key', 'Idempotency-Key':'h3style_12345678', Cookie:auth.cookie},
         body:JSON.stringify({provider:'runninghub', generation_mode:'ai_app', instance_id:'minimax-h3-style', confirm_paid:true, prompt:'STYLE LOCK: broken CGI cat.', duration:10}),
       }), env,
     });
@@ -395,6 +430,38 @@ test('RunningHub H3 style mode submits the built-in reference through the standa
   }
 });
 
+test('official MiniMax H3 submits directly without RunningHub', async () => {
+  const values = new Map();
+  const kv = {
+    get:async (key, type) => type === 'json' && values.get(key) ? JSON.parse(values.get(key)) : values.get(key),
+    put:async (key, value) => values.set(key, value),
+  };
+  const env = {SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv, USERS:kv};
+  const auth = await signInTestUser(env);
+  const originalFetch = globalThis.fetch;
+  let providerRequest;
+  globalThis.fetch = async (url, options) => {
+    providerRequest = {url:String(url), body:JSON.parse(options.body)};
+    return Response.json({task_id:'minimax-task-1', base_resp:{status_code:0, status_msg:'success'}});
+  };
+  try {
+    const response = await createVideoJob({
+      request:new Request('http://127.0.0.1/api/video-jobs', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'X-Provider-Key':'minimax-test-key', 'X-Provider-Region':'global', 'Idempotency-Key':'minimax_12345678', Cookie:auth.cookie},
+        body:JSON.stringify({provider:'minimax', confirm_paid:true, prompt:'STYLE LOCK: broken CGI cat.', duration:10, ratio:'16:9'}),
+      }), env,
+    });
+    const result = await response.json();
+    assert.equal(response.status, 202);
+    assert.equal(result.job.provider, 'minimax');
+    assert.match(providerRequest.url, /api\.minimax\.io\/v2\/video_generation$/);
+    assert.equal(providerRequest.body.model, 'MiniMax-H3');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('RunningHub V2 AI instance uses the instance path and direct response contract', async () => {
   const values = new Map();
   const kv = {
@@ -405,7 +472,7 @@ test('RunningHub V2 AI instance uses the instance path and direct response contr
     put: async (key, value) => values.set(key, value),
   };
   const env = {
-    SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv,
+    SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv, USERS:kv,
     RUNNINGHUB_AI_APPS:JSON.stringify([{
       id:'seedance', name:'Seedance 2.5 文生视频', apiVersion:'v2', webappId:'2085880920086765569',
       instanceType:'plus',
@@ -416,6 +483,7 @@ test('RunningHub V2 AI instance uses the instance path and direct response contr
       ],
     }]),
   };
+  const auth = await signInTestUser(env);
   const originalFetch = globalThis.fetch;
   let providerRequest;
   globalThis.fetch = async (url, options) => {
@@ -426,7 +494,7 @@ test('RunningHub V2 AI instance uses the instance path and direct response contr
     const response = await createVideoJob({
       request:new Request('http://127.0.0.1/api/video-jobs', {
         method:'POST',
-        headers:{'Content-Type':'application/json', 'X-Provider-Key':'runninghub-test-key', 'Idempotency-Key':'v2app_12345678'},
+        headers:{'Content-Type':'application/json', 'X-Provider-Key':'runninghub-test-key', 'Idempotency-Key':'v2app_12345678', Cookie:auth.cookie},
         body:JSON.stringify({provider:'runninghub', generation_mode:'ai_app', instance_id:'seedance', confirm_paid:true, prompt:'A cat walks.', duration:15, ratio:'16:9'}),
       }), env,
     });

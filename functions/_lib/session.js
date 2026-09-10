@@ -56,7 +56,7 @@ export function validateIdempotencyKey(request) {
 export function assertPaidRuntime(request, env = {}) {
   const url = new URL(request.url);
   if (['localhost', '127.0.0.1'].includes(url.hostname)) return;
-  if (url.protocol !== 'https:' || !env.SESSION_SECRET || !env.JOBS || !env.RATE_LIMITS) {
+  if (url.protocol !== 'https:' || !env.SESSION_SECRET || !env.JOBS || !env.RATE_LIMITS || !env.USERS) {
     throw new HttpError('视频生成服务仍在完成安全配置，请稍后再试。', 503, 'service_not_ready');
   }
 }

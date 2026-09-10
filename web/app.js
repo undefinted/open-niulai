@@ -7,12 +7,14 @@ let providerState = {providers: [], connected: [], secure_context: false};
 let selectedWorkflow = 'minimax-h3';
 let firstFrameDataUrl = null;
 let sessionState = null;
+let authMode = 'login';
 const activePolls = new Map();
 const connectionKey = provider => `open-niulai:${provider}:connection`;
-const workflowConfigKey = preset => `open-niulai:runninghub:workflow:${preset}`;
-const jobHistoryKey = 'open-niulai:video-jobs';
-const creatorDraftKey = 'open-niulai:creator-draft';
-const packDraftKey = 'open-niulai:last-pack';
+const accountScope = () => sessionState?.user?.id || 'guest';
+const workflowConfigKey = preset => `open-niulai:${accountScope()}:runninghub:workflow:${preset}`;
+const jobHistoryKey = () => `open-niulai:${accountScope()}:video-jobs`;
+const creatorDraftKey = () => `open-niulai:${accountScope()}:creator-draft`;
+const packDraftKey = () => `open-niulai:${accountScope()}:last-pack`;
 const currentPackSchema = '0.2.0';
 let workflowPresets = {
   'minimax-h3-style': {id:'minimax-h3-style', name:'MiniMax H3 · 风格参考生成', badge:'风格优先', description:'仅企业共享 API Key 可调用。', supports_image:true, configured:false, mode:'standard_model', uses_builtin_style_reference:true, availability_reason:'消费级 Key 不可用'},
@@ -46,7 +48,7 @@ function saveWorkflowConfig(preset, config) {
 }
 
 function getJobHistory() {
-  try { return JSON.parse(localStorage.getItem(jobHistoryKey) || '[]').slice(0, 20); }
+  try { return JSON.parse(localStorage.getItem(jobHistoryKey()) || '[]').slice(0, 20); }
   catch { return []; }
 }
 
@@ -67,7 +69,7 @@ function saveJob(job) {
     error:job.error ? String(job.error) : null,
   };
   const jobs = [safe, ...getJobHistory().filter(item => !(item.id === safe.id && item.provider === safe.provider))].slice(0, 20);
-  localStorage.setItem(jobHistoryKey, JSON.stringify(jobs));
+  localStorage.setItem(jobHistoryKey(), JSON.stringify(jobs));
   renderJobHistory();
 }
 
@@ -97,10 +99,36 @@ async function initializeService() {
     status.classList.toggle('warning', !health.production_ready);
     status.lastChild.textContent = health.production_ready ? '服务已就绪' : '公开试用模式';
     status.title = health.production_ready ? `Open NiuLai ${health.version}` : '核心功能可用，生产级云端绑定尚未全部配置';
+    updateAccountUI();
+    if (sessionState.authenticated) loadAccountWorkspace();
   } catch {
     status.classList.add('error');
     status.lastChild.textContent = '服务连接异常';
   }
+}
+
+function updateAccountUI() {
+  const accountButton = document.querySelector('#account-open');
+  if (!accountButton) return;
+  accountButton.textContent = sessionState?.authenticated ? sessionState.user.email : '注册 / 登录';
+}
+
+function loadAccountWorkspace() {
+  form.reset();
+  currentPack = null;
+  pendingCreatorPayload = null;
+  workspace.classList.add('hidden');
+  document.querySelector('#script-candidates').classList.add('hidden');
+  restoreCreatorDraft();
+  updateCreatorAction();
+  renderJobHistory();
+}
+
+function requireAccount() {
+  if (sessionState?.authenticated) return true;
+  openAccount();
+  notify('请先注册或登录');
+  return false;
 }
 
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
@@ -132,7 +160,7 @@ function qualityMarkup(report, compact = false) {
 
 function render(pack, {scroll = true} = {}) {
   currentPack = pack;
-  localStorage.setItem(packDraftKey, JSON.stringify(pack));
+  localStorage.setItem(packDraftKey(), JSON.stringify(pack));
   document.querySelector('#result-title').textContent = pack.title;
   document.querySelector('#result-hook').textContent = pack.hook;
   const design = pack.story_design || {};
@@ -192,22 +220,22 @@ function renderScriptCandidates(result) {
 
 function saveCreatorDraft() {
   const values = Object.fromEntries(new FormData(form));
-  localStorage.setItem(creatorDraftKey, JSON.stringify(values));
+  localStorage.setItem(creatorDraftKey(), JSON.stringify(values));
 }
 
 function restoreCreatorDraft() {
   try {
-    const draft = JSON.parse(localStorage.getItem(creatorDraftKey) || 'null');
+    const draft = JSON.parse(localStorage.getItem(creatorDraftKey()) || 'null');
     if (draft) Object.entries(draft).forEach(([name, value]) => {
       const field = form.elements.namedItem(name);
       if (field && typeof value === 'string') field.value = value;
     });
-    const pack = JSON.parse(localStorage.getItem(packDraftKey) || 'null');
+    const pack = JSON.parse(localStorage.getItem(packDraftKey()) || 'null');
     if (pack?.schema_version === currentPackSchema && pack?.title && Array.isArray(pack.script) && Array.isArray(pack.video_shots)) render(pack, {scroll:false});
-    else if (pack) localStorage.removeItem(packDraftKey);
+    else if (pack) localStorage.removeItem(packDraftKey());
   } catch {
-    localStorage.removeItem(creatorDraftKey);
-    localStorage.removeItem(packDraftKey);
+    localStorage.removeItem(creatorDraftKey());
+    localStorage.removeItem(packDraftKey());
   }
 }
 
@@ -229,6 +257,7 @@ form.addEventListener('change', updateCreatorAction);
 
 form.addEventListener('submit', async event => {
   event.preventDefault();
+  if (!requireAccount()) return;
   const button = form.querySelector('.primary');
   button.disabled = true;
   button.querySelector('span').textContent = '正在构思…';
@@ -364,6 +393,63 @@ document.querySelector('#download').addEventListener('click', () => {
 });
 
 const dialog = document.querySelector('#connections-dialog');
+const accountDialog = document.querySelector('#account-dialog');
+
+function renderAccountDialog() {
+  const authenticated = Boolean(sessionState?.authenticated);
+  document.querySelector('#account-guest').classList.toggle('hidden', authenticated);
+  document.querySelector('#account-user').classList.toggle('hidden', !authenticated);
+  document.querySelector('#account-email').textContent = sessionState?.user?.email || '';
+}
+
+function openAccount() {
+  renderAccountDialog();
+  accountDialog.showModal();
+}
+
+function setAuthMode(mode) {
+  authMode = mode === 'register' ? 'register' : 'login';
+  document.querySelectorAll('[data-auth-mode]').forEach(button => button.classList.toggle('active', button.dataset.authMode === authMode));
+  const password = document.querySelector('#account-form [name="password"]');
+  password.autocomplete = authMode === 'register' ? 'new-password' : 'current-password';
+  document.querySelector('#account-form button span').textContent = authMode === 'register' ? '创建账户' : '登录';
+  document.querySelector('#account-title').textContent = authMode === 'register' ? '注册 Open NiuLai' : '登录 Open NiuLai';
+}
+
+document.querySelector('#account-open').addEventListener('click', openAccount);
+document.querySelector('#account-close').addEventListener('click', () => accountDialog.close());
+document.querySelectorAll('[data-auth-mode]').forEach(button => button.addEventListener('click', () => setAuthMode(button.dataset.authMode)));
+document.querySelector('#account-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const submit = event.currentTarget.querySelector('button[type="submit"]');
+  const data = Object.fromEntries(new FormData(event.currentTarget));
+  submit.disabled = true;
+  try {
+    const response = await fetch(`/api/auth/${authMode}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || '账户操作失败');
+    sessionState = {...sessionState, ...result};
+    updateAccountUI();
+    loadAccountWorkspace();
+    renderAccountDialog();
+    notify(authMode === 'register' ? '账户创建成功' : '登录成功');
+  } catch (error) {
+    notify(error.message);
+  } finally {
+    submit.disabled = false;
+  }
+});
+document.querySelector('#account-logout').addEventListener('click', async () => {
+  await fetch('/api/auth/logout', {method:'POST'});
+  sessionStorage.clear();
+  sessionState = {...sessionState, authenticated:false, user:null};
+  updateAccountUI();
+  loadAccountWorkspace();
+  renderAccountDialog();
+  setAuthMode('login');
+  await loadProviders();
+  notify('已退出登录');
+});
 
 async function loadProviders() {
   const response = await fetch('/api/providers');
@@ -374,15 +460,15 @@ async function loadProviders() {
   notice.textContent = !providerState.secure_context
     ? '当前站点使用 HTTP，为防止凭证泄露，API Key 连接已禁用。配置 HTTPS 后自动开放。'
     : providerState.generation_ready === false ? '站点正在配置签名会话、任务存储和限流，完成前不会接收 API Key 或付费任务。' : '';
-  document.querySelector('#provider-list').innerHTML = providerState.providers.filter(item => ['qwen','deepseek','runninghub'].includes(item.id)).map(item => {
+  document.querySelector('#provider-list').innerHTML = providerState.providers.filter(item => ['qwen','deepseek','minimax','runninghub','seedance'].includes(item.id)).map(item => {
     const connected = providerState.connected.includes(item.id);
     const connectionReady = providerState.secure_context && (item.capability === 'script' || providerState.generation_ready !== false);
     const badge = connected ? '已临时连接' : !providerState.secure_context ? 'HTTPS 后可连接' : !connectionReady ? '服务配置中' : 'API Key';
     let action = '';
     if (connected) action = `<button type="button" class="secondary" data-disconnect="${item.id}">断开</button>`;
-    else if (item.connection === 'api_key' && connectionReady) action = `<form class="key-form" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="${escapeHtml(item.name)} API Key"><button class="secondary" type="submit">连接</button></form>`;
+    else if (item.connection === 'api_key' && connectionReady) action = `<form class="key-form" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="${escapeHtml(item.name)} API Key">${item.id === 'minimax' ? '<select name="region" aria-label="MiniMax API 区域"><option value="cn">中国站</option><option value="global">国际站</option></select>' : ''}<button class="secondary" type="submit">连接</button></form>`;
     else if (item.account_url) action = `<a class="secondary action-link" href="${item.account_url}" target="_blank" rel="noreferrer">前往平台 ↗</a>`;
-    const purpose = item.capability === 'script' ? '用于生成三个不同脚本候选，不参与视频扣费。' : '用于提交视频生成任务，费用从你的 RunningHub 账户扣除。';
+    const purpose = item.capability === 'script' ? '用于生成三个不同脚本候选，不参与视频扣费。' : item.id === 'minimax' ? '直接调用 MiniMax 官方 H3 API，费用从你的 MiniMax 账户扣除。' : item.id === 'seedance' ? '官方火山方舟通道需要 API Key 和视频模型接入点，完成适配后开放。' : '用于提交视频生成任务，费用从你的 RunningHub 账户扣除。';
     return `<article class="provider-row"><div><span class="provider-badge">${badge}</span><h3>${escapeHtml(item.name)}</h3><p>${purpose} 凭证不写入磁盘。</p></div>${action}</article>`;
   }).join('');
   updateGenerationStudio();
@@ -394,6 +480,8 @@ async function loadVideoInstances() {
   if (!response.ok) throw new Error(result.error || 'AI 实例目录加载失败');
   const custom = workflowPresets.custom;
   workflowPresets = Object.fromEntries(result.instances.map(instance => [instance.id, {...instance, mode:instance.mode || 'ai_app'}]));
+  workflowPresets['official-minimax-h3'] = {id:'official-minimax-h3', name:'MiniMax H3 · 官方 API', badge:'官方直连', description:'直接调用 MiniMax 官方多模态视频 API，不经过 RunningHub。', supports_image:true, configured:true, mode:'official_api', provider:'minimax', estimated_cost:'按 MiniMax 官方账户实际用量结算'};
+  workflowPresets['official-seedance'] = {id:'official-seedance', name:'Seedance · 火山方舟官方 API', badge:'官方直连', description:'需要火山方舟 API Key 与视频模型接入点。', supports_image:true, configured:false, mode:'official_api', provider:'seedance', availability_reason:'等待配置火山方舟视频模型接入点'};
   workflowPresets.custom = custom;
   if (!workflowPresets[selectedWorkflow]) selectedWorkflow = Object.keys(workflowPresets)[0] || 'custom';
 }
@@ -418,11 +506,12 @@ function saveVisibleWorkflowConfig() {
 function updateGenerationStudio() {
   const action = document.querySelector('#generation-action');
   if (!action) return;
-  const item = providerState.providers.find(provider => provider.id === 'runninghub');
+  const preset = workflowPresets[selectedWorkflow] || workflowPresets.custom;
+  const providerId = preset.provider || 'runninghub';
+  const item = providerState.providers.find(provider => provider.id === providerId);
   if (!item) return;
   const connected = providerState.connected.includes(item.id);
   const config = currentWorkflowConfig();
-  const preset = workflowPresets[selectedWorkflow] || workflowPresets.custom;
   const customMode = preset.mode === 'workflow';
   const standardStyleMode = preset.mode === 'standard_model';
   const serviceReady = providerState.secure_context && providerState.generation_ready !== false;
@@ -435,11 +524,11 @@ function updateGenerationStudio() {
   const styleMode = standardStyleMode ? '风格优先：自动使用原创低模参考图' : firstFrameDataUrl && preset.supports_image ? '风格优先：首帧会锁定造型' : '仅靠文字：画风可能被模型自动美化';
   note.textContent = customMode
     ? `${preset.name} 将使用你的节点配置运行。${firstFrameDataUrl ? '已提供首帧，请确认图片节点有效。' : '未提供首帧，画风不稳定。'}`
-    : `${preset.name} · ${styleMode}。费用从 RunningHub 账户扣除。`;
+    : `${preset.name} · ${styleMode}。费用从${providerId === 'minimax' ? ' MiniMax 官方' : ' RunningHub'}账户扣除。`;
   const checks = [
     {done:qualityReady, label:'质量门禁', detail:qualityReady ? `规则验证 ${currentPack.quality_report.score}/100` : '请重新生成并修正失败项'},
     {done:scriptReady, label:'视频脚本', detail:scriptReady ? '已确认，可继续修改' : '请填写最终视频脚本'},
-    {done:serviceReady && connected, label:'模型账户', detail:!serviceReady ? '服务尚未开放付费任务' : connected ? 'RunningHub 已临时连接' : '需要连接 RunningHub'},
+    {done:serviceReady && connected, label:'模型账户', detail:!serviceReady ? '服务尚未开放付费任务' : connected ? `${item.name} 已临时连接` : `需要连接 ${item.name}`},
     {done:generatorReady, label:customMode ? '工作流绑定' : 'AI 实例', detail:generatorReady ? `${preset.name} 已就绪` : customMode ? '填写工作流 ID 与提示词节点' : '该实例等待管理员绑定'},
     {done:inputReady, label:'画面输入', detail:standardStyleMode ? '原创低模参考图将自动附带' : firstFrameDataUrl ? (inputReady ? '风格首帧已就绪' : customMode ? '还需填写图片节点 ID' : '该实例不接受首帧') : (preset.supports_image ? '建议添加低模首帧锁定画风' : '纯文生视频，画风不稳定')},
   ];
@@ -491,6 +580,7 @@ function updateWorkflowPreset() {
 }
 
 async function openConnections() {
+  if (!requireAccount()) return;
   try { await loadProviders(); dialog.showModal(); } catch (error) { notify(error.message); }
 }
 
@@ -563,7 +653,7 @@ document.addEventListener('submit', async event => {
 
 document.querySelector('#clear-jobs').addEventListener('click', () => {
   if (!window.confirm('只会清除当前浏览器中的任务记录，不会取消 RunningHub 上的任务。确定清空吗？')) return;
-  localStorage.removeItem(jobHistoryKey);
+  localStorage.removeItem(jobHistoryKey());
   renderJobHistory();
 });
 
@@ -593,9 +683,12 @@ dialog.addEventListener('click', async event => {
 });
 
 async function submitRunningHub() {
+  if (!requireAccount()) return;
   if (!currentPack) return;
   if (currentPack.quality_report?.status !== 'passed') { notify('质量门禁未通过，请重新生成并检查失败项'); return; }
   const preset = workflowPresets[selectedWorkflow];
+  const providerId = preset.provider || 'runninghub';
+  const providerLabel = providerId === 'minimax' ? 'MiniMax 官方' : 'RunningHub';
   const customMode = preset.mode === 'workflow';
   const standardStyleMode = preset.mode === 'standard_model';
   const workflowId = document.querySelector('#rh-workflow-id').value.trim();
@@ -610,7 +703,7 @@ async function submitRunningHub() {
     prompt_field:document.querySelector('#rh-prompt-field').value.trim() || 'text',
     image_node_id:imageNodeId, image_field:document.querySelector('#rh-image-field').value.trim() || 'image',
   });
-  if (!window.confirm(`将使用你的 RunningHub 账户额度运行 ${preset.name}。费用以 RunningHub 实际结算为准，是否确认提交？`)) return;
+  if (!window.confirm(`将使用你的${providerLabel}账户额度运行 ${preset.name}。费用以${providerLabel}实际结算为准，是否确认提交？`)) return;
   const action = document.querySelector('[data-submit-runninghub]');
   const status = document.querySelector('#video-job-status');
   action.disabled = true;
@@ -618,7 +711,7 @@ async function submitRunningHub() {
   status.innerHTML = `<strong>正在准备${customMode ? '工作流' : ' AI 实例'}</strong><span>正在上传素材并创建付费任务，请勿重复点击。</span>`;
   try {
     let uploadedFileName = null;
-    if (firstFrameDataUrl && !standardStyleMode) {
+    if (providerId === 'runninghub' && firstFrameDataUrl && !standardStyleMode) {
       const upload = await fetch('/api/runninghub/uploads', {
         method:'POST', headers:{'Content-Type':'application/json', ...providerHeaders('runninghub')},
         body:JSON.stringify({data_url:firstFrameDataUrl, filename:'open-niulai-first-frame.png'}),
@@ -630,21 +723,22 @@ async function submitRunningHub() {
     const finalPrompt = document.querySelector('#video-script-prompt').value.trim();
     if (!finalPrompt) throw new Error('请先确认或填写最终视频脚本');
     const response = await fetch('/api/video-jobs', {
-      method:'POST', headers:{'Content-Type':'application/json', 'Idempotency-Key':crypto.randomUUID(), ...providerHeaders('runninghub')},
+      method:'POST', headers:{'Content-Type':'application/json', 'Idempotency-Key':crypto.randomUUID(), ...providerHeaders(providerId)},
       body:JSON.stringify({
-        provider:'runninghub', generation_mode:customMode ? 'workflow' : 'ai_app', instance_id:customMode ? undefined : selectedWorkflow,
+        provider:providerId, generation_mode:customMode ? 'workflow' : 'ai_app', instance_id:customMode ? undefined : selectedWorkflow,
         workflow_preset:selectedWorkflow, confirm_paid:true, workflow_id:customMode ? workflowId : undefined, prompt:finalPrompt,
         duration:currentPack.constraint_report?.duration_seconds, ratio:'16:9',
         prompt_node_id:promptNodeId, prompt_field:document.querySelector('#rh-prompt-field').value.trim() || 'text',
         image_node_id:imageNodeId, image_field:document.querySelector('#rh-image-field').value.trim() || 'image',
-        uploaded_file_name:uploadedFileName, access_password:customMode ? document.querySelector('#rh-access-password').value : undefined,
+        uploaded_file_name:uploadedFileName, first_frame_image:providerId === 'minimax' ? firstFrameDataUrl : undefined,
+        access_password:customMode ? document.querySelector('#rh-access-password').value : undefined,
       }),
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || '视频生成任务提交失败');
     showJob(result.job);
     saveJob(result.job);
-    pollJob(result.job.id, 'runninghub');
+    pollJob(result.job.id, providerId);
   } catch (error) {
     status.innerHTML = `<strong>提交失败</strong><span>${escapeHtml(error.message)}</span>`;
     action.disabled = false;
@@ -709,7 +803,7 @@ function pollJob(jobId, provider, trigger = null) {
 
 function resumeJob(jobId, provider, trigger) {
   if (!getConnection(provider)) {
-    notify('请先重新连接 RunningHub，API Key 不会跨标签页保存');
+    notify(`请先重新连接${provider === 'minimax' ? ' MiniMax' : ' RunningHub'}，API Key 不会跨标签页保存`);
     openConnections();
     return;
   }

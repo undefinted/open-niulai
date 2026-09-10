@@ -14,6 +14,10 @@
     {
       "binding": "RATE_LIMITS",
       "id": "c59b8bf91a18479c8241cd5c2ef3b939"
+    },
+    {
+      "binding": "USERS",
+      "id": "895bcb4d6bcc44b8ad78ed73e467ff50"
     }
   ]
 }

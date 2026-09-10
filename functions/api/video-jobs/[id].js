@@ -2,6 +2,7 @@ import { errorResponse, HttpError, json } from '../../_lib/http.js';
 import { credentials, minimaxRequest } from '../../_lib/minimax.js';
 import { getAiApp, normalizeOutputs, runningHubJson, runningHubV2Json } from '../../_lib/runninghub.js';
 import { assertPaidRuntime, ensureSession, publicJob } from '../../_lib/session.js';
+import { requireUser } from '../../_lib/auth.js';
 
 const JOB_TTL = 7 * 24 * 60 * 60;
 
@@ -11,10 +12,11 @@ export async function onRequestGet(context) {
     const id = String(context.params.id || '').trim();
     if (!id || id.length > 200) throw new Error('视频任务 ID 无效。');
     const session = await ensureSession(context.request, context.env);
+    const { user } = await requireUser(context.request, context.env);
     const { apiKey, region } = credentials(context.request);
     let provider = new URL(context.request.url).searchParams.get('provider') || 'minimax';
     const stored = context.env.JOBS ? await context.env.JOBS.get(`job:${provider}:${id}`, 'json') : null;
-    if (stored && stored.owner !== session.id) throw new HttpError('未找到该视频任务。', 404, 'job_not_found');
+    if (stored && stored.owner !== user.id) throw new HttpError('未找到该视频任务。', 404, 'job_not_found');
     if (stored) provider = stored.provider;
     let job;
     if (provider === 'runninghub') {

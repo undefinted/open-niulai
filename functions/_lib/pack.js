@@ -41,11 +41,11 @@ function worldFor(subject, prompt) {
 function characterFor(subject, prompt, tone) {
   let archetype;
   if (subject.includes('外卖') || prompt.includes('骑手')) archetype = 'an original helmet-headed delivery-rider humanoid carrying a warped unbranded delivery box';
-  else if (subject.includes('猫')) archetype = 'an original upright cat with a trapezoid head, uneven stick legs, and a kinked tail';
+  else if (subject.includes('猫')) archetype = 'an original bipedal cat-headed humanoid, not a real cat and not quadrupedal, with a trapezoid head, a rectangular torso, uneven stick legs, a kinked tail, crudely pasted human-like eyes and mouth, and no individual fur strands';
   else if (['代码', 'ai', '程序'].some(x => subject.toLowerCase().includes(x))) archetype = 'an original terminal-window humanoid with a crooked cuboid head and one missing body corner';
   else if (['甲方', '老板', '简历'].some(x => subject.includes(x))) archetype = 'an original office archetype with an asymmetric polygon head and a narrow suit body';
   else archetype = `an original ${subject}-inspired upright protagonist`;
-  return `${archetype}, blocky toy-like geometry, awkward original facial design, stiff posture, blurry textures, visible mesh gaps, stable two-color silhouette; tone: ${tone}`;
+  return `${archetype}, ugly blocky toy geometry, awkward original facial design, stiff upright posture, blurry textures, visible mesh gaps and deliberately incorrect anatomy, stable two-color silhouette; tone: ${tone}`;
 }
 
 export function createPack(payload) {
@@ -74,7 +74,7 @@ export function createPack(payload) {
   }[styleStrength];
   const [world, worldZh] = worldFor(subject, prompt);
   const character = characterFor(subject, prompt, tone);
-  const still = `Original independent scene for ${title}. ${character} Environment: ${world}. ${ORIGINAL_LOW_POLY_ABSURD.visual_prompt}. Story direction: ${prompt}. Avoid: ${ORIGINAL_LOW_POLY_ABSURD.negative_prompt}.`;
+  const still = `${ORIGINAL_LOW_POLY_ABSURD.visual_prompt}. SUBJECT LOCK: ${character}. ENVIRONMENT: ${world}. ORIGINAL STORY: ${prompt}. This must look technically inept and sincerely handmade, not stylish retro art. AVOID AND DO NOT BEAUTIFY: ${ORIGINAL_LOW_POLY_ABSURD.negative_prompt}.`;
   const slots = timeline(duration);
   const fallbackActions = { hook: `在${worldZh}中亮出${subject}和一个微不足道却被认真对待的危机。`, conflict: `主角试图${missionZh}，失败后僵硬停顿，再重复同一句话。`, reveal: `${revealZh}，让前面的台词突然变了意思。` };
   const fallbackSubtitles = { hook: title, conflict: line, reveal: line };
@@ -84,12 +84,12 @@ export function createPack(payload) {
     action: String(draftShots?.[index]?.action || fallbackActions[beat]).trim().slice(0, 300),
     subtitle: String(draftShots?.[index]?.subtitle || fallbackSubtitles[beat]).trim().slice(0, 100),
   }));
-  const beatPlan = script.map(item => `${item.time} ${item.action} Subtitle/voice: "${item.subtitle}"`).join(' | ');
-  const motion = `${duration}-second original low-budget 3D absurdist short. Keep the supplied first-frame subject, silhouette, colors, crude topology and environment stable. Story: ${prompt}. Mission: ${mission}. Style: ${styleDirection}. Beat plan: ${beatPlan}. Motion language: ${ORIGINAL_LOW_POLY_ABSURD.motion_prompt}. Use one main action per beat, then land the reveal: ${reveal}. Preserve roughness. Avoid: ${ORIGINAL_LOW_POLY_ABSURD.negative_prompt}.`;
+  const beatPlan = script.map(item => `${item.time}: ${item.action} Spoken line, not rendered text: "${item.subtitle}"`).join(' THEN ');
+  const motion = `${ORIGINAL_LOW_POLY_ABSURD.visual_prompt}. ${duration}-second LOCKED SHOT. SUBJECT: ${character}. SET: ${world}. ACTION TIMELINE: ${beatPlan}. PERFORMANCE: ${styleDirection}; ${ORIGINAL_LOW_POLY_ABSURD.motion_prompt}. STORY GOAL: ${mission}. FINAL REVEAL: ${reveal}. Keep exactly one protagonist, one fixed set and the same visibly broken model throughout. Do not invent text, signs, extra characters or a cinematic subplot. AVOID AND DO NOT BEAUTIFY: ${ORIGINAL_LOW_POLY_ABSURD.negative_prompt}.`;
   const shot = {
     shot_id: 'shot_001', duration: `${duration}s`, purpose: template,
     first_frame_prompt: `${still} The subject faces camera with clean subtitle space.`, motion_prompt: motion,
-    camera: 'static medium-wide shot; optional awkward 5% push-in', subtitle: line, voiceover: line,
+    camera: 'locked static medium-wide shot; no pan, orbit, handheld motion or cinematic push-in', subtitle: line, voiceover: line,
     negative_prompt: ORIGINAL_LOW_POLY_ABSURD.negative_prompt,
     runway_prompt: `Use the supplied first frame. ${motion}`,
     kling_prompt: `Lock the supplied image as subject reference; preserve face, silhouette, colors, and environment. ${motion}`,

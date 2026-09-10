@@ -17,6 +17,9 @@ test('Pages pack builder preserves the web contract', () => {
   assert.equal(pack.constraint_report.duration_seconds, 10);
   assert.equal(pack.script.length, 3);
   assert.match(pack.video_shots[0].motion_prompt, /10-second/);
+  assert.match(pack.video_shots[0].motion_prompt, /STYLE LOCK/);
+  assert.match(pack.video_shots[0].motion_prompt, /not a real cat/);
+  assert.match(pack.video_shots[0].motion_prompt, /clean topology/);
 });
 
 test('Pages pack builder rejects an empty prompt', () => {

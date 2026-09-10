@@ -15,9 +15,9 @@ export const ORIGINAL_LOW_POLY_ABSURD = Object.freeze({
     '全片只保留一个主角，每个镜头只发生一个主要动作',
     '动作必须能被文生视频或图生视频模型直接表现',
   ],
-  visual_prompt: 'deliberately crude amateur low-poly 3D, wrong proportions, sparse faceted geometry, repeated blurry low-resolution textures, flat default viewport lighting, little shadow, visible mesh seams and clipping, awkward sincere pose, old game cutscene and cheap screen-recording feel',
-  motion_prompt: 'stepped low frame rate, held poses, stiff head turns, sliding feet, delayed mouth motion, awkward one-second pauses, slightly mistimed reactions, mostly static medium-wide camera, hard cut or freeze-frame reveal',
-  negative_prompt: 'copyrighted characters, copied film frames, logos, polished studio 3D, cinematic lighting, photorealism, smooth animation, realistic physics, elegant acting, detailed skin, glossy materials, new characters, complex camera motion, camera shake',
+  visual_prompt: 'STYLE LOCK: visibly broken amateur CGI from an unfinished early-2000s game-engine test, never live action and never a real animal. One upright animal-headed or object-headed humanoid with a brick-shaped torso, short uneven limbs, an oversized asymmetric head, poorly placed mask-like facial features and a blank stare. Sparse polygon geometry, dented crater-like surfaces, a few obvious mesh holes, disconnected joints and intentional clipping. Blurry reused 128px-looking textures smeared into two or three harsh color blocks, heavy matte plastic, flat unlit viewport shading, almost no shadows, no depth of field, empty stage-set scenery and careless framing. The defects are deliberate and must remain clearly visible in every frame',
+  motion_prompt: '8-12 fps stepped low frame rate animation held on repeated frames, stiff mechanical turns, sliding feet, reused motion cycles, no inertia and no weight, delayed reaction, one full second of uncomfortable stillness, mouth barely moving out of sync, locked medium-wide camera, abrupt freeze on the final broken pose',
+  negative_prompt: 'real animal, live action, photography, realistic fur, cinematic image, polished studio 3D, Pixar, Disney, anime, cute mascot, professional low-poly art, clean topology, smooth intact surfaces, PBR materials, glossy materials, detailed skin, soft light, rim light, volumetric light, depth of field, bloom, color grading, fluid motion, realistic physics, elegant acting, complex camera movement, camera shake, copyrighted characters, copied film frames, logos',
 });
 
 export function scriptSystemPrompt() {

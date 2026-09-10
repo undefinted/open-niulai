@@ -420,15 +420,16 @@ function updateGenerationStudio() {
   const generatorReady = customMode ? workflowReady : Boolean(preset.configured);
   const inputReady = !firstFrameDataUrl || (customMode ? Boolean(config.image_node_id) : Boolean(preset.supports_image));
   const note = document.querySelector('#generation-account-note');
+  const styleMode = firstFrameDataUrl && preset.supports_image ? '风格优先：首帧会锁定造型' : '仅靠文字：画风可能被模型自动美化';
   note.textContent = customMode
-    ? `${preset.name} 将使用你的节点配置运行，费用从 RunningHub 账户扣除。`
-    : `${preset.name} 会自动接收当前脚本${firstFrameDataUrl ? '和首帧' : ''}，费用从 RunningHub 账户扣除。`;
+    ? `${preset.name} 将使用你的节点配置运行。${firstFrameDataUrl ? '已提供首帧，请确认图片节点有效。' : '未提供首帧，画风不稳定。'}`
+    : `${preset.name} · ${styleMode}。费用从 RunningHub 账户扣除。`;
   const checks = [
     {done:qualityReady, label:'质量门禁', detail:qualityReady ? `规则验证 ${currentPack.quality_report.score}/100` : '请重新生成并修正失败项'},
     {done:scriptReady, label:'视频脚本', detail:scriptReady ? '已确认，可继续修改' : '请填写最终视频脚本'},
     {done:serviceReady && connected, label:'模型账户', detail:!serviceReady ? '服务尚未开放付费任务' : connected ? 'RunningHub 已临时连接' : '需要连接 RunningHub'},
     {done:generatorReady, label:customMode ? '工作流绑定' : 'AI 实例', detail:generatorReady ? `${preset.name} 已就绪` : customMode ? '填写工作流 ID 与提示词节点' : '该实例等待管理员绑定'},
-    {done:inputReady, label:'画面输入', detail:firstFrameDataUrl ? (inputReady ? '首帧输入已就绪' : customMode ? '还需填写图片节点 ID' : '该实例不接受首帧') : '文本直出'},
+    {done:inputReady, label:'画面输入', detail:firstFrameDataUrl ? (inputReady ? '风格首帧已就绪' : customMode ? '还需填写图片节点 ID' : '该实例不接受首帧') : (preset.supports_image ? '建议添加低模首帧锁定画风' : '纯文生视频，画风不稳定')},
   ];
   const firstPending = checks.findIndex(check => !check.done);
   document.querySelector('#generation-readiness').innerHTML = checks.map((check, index) => `<li class="${check.done ? 'done' : index === firstPending ? 'current' : 'waiting'}"><i>${check.done ? '✓' : index + 1}</i><span><strong>${escapeHtml(check.label)}</strong><small>${escapeHtml(check.detail)}</small></span></li>`).join('');
@@ -452,7 +453,8 @@ function updateWorkflowPreset() {
   const preset = workflowPresets[selectedWorkflow];
   const config = getWorkflowConfig(selectedWorkflow);
   const availability = preset.mode === 'ai_app' ? (preset.configured ? `可用 · ${preset.estimated_cost}` : '实例尚未由管理员绑定') : '高级模式';
-  document.querySelector('#workflow-summary').innerHTML = `<span class="provider-badge">${escapeHtml(preset.badge)}</span><strong>${escapeHtml(preset.name)}</strong><p>${escapeHtml(preset.description)} · ${escapeHtml(availability)}</p>`;
+  const styleFit = preset.supports_image ? '风格适配：可用首帧锁定' : '风格适配：较弱，仅靠文字可能写实化';
+  document.querySelector('#workflow-summary').innerHTML = `<span class="provider-badge">${escapeHtml(preset.badge)}</span><strong>${escapeHtml(preset.name)}</strong><p>${escapeHtml(preset.description)} · ${escapeHtml(styleFit)} · ${escapeHtml(availability)}</p>`;
   document.querySelector('#workflow-config-title').textContent = `绑定 ${preset.name} 工作流`;
   document.querySelector('#rh-workflow-id').value = config.workflow_id || '';
   document.querySelector('#rh-prompt-node').value = config.prompt_node_id || '';

@@ -39,11 +39,12 @@
         </div>
 
         <div class="controls">
-          <label>脚本模型<select id="script-provider" name="script_provider">
-            <option value="local">快速模板 · 无需密钥</option>
-            <option value="qwen">通义千问 · 3 个候选</option>
-            <option value="deepseek">DeepSeek · 3 个候选</option>
-          </select></label>
+          <fieldset class="script-model-picker">
+            <legend>脚本生成方式</legend>
+            <label><input type="radio" name="script_provider" value="local" checked><span><strong>快速模板</strong><small>立即生成 · 无需密钥</small></span></label>
+            <label><input type="radio" name="script_provider" value="qwen"><span><strong>通义千问</strong><small>AI 智能生成 3 版</small></span></label>
+            <label><input type="radio" name="script_provider" value="deepseek"><span><strong>DeepSeek</strong><small>AI 智能生成 3 版</small></span></label>
+          </fieldset>
           <label>主角<input id="subject" name="subject" placeholder="猫" maxlength="20"></label>
           <label>结构<select id="template" name="template">
             <option value="ad_hook">危机广告</option>

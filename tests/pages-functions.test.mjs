@@ -224,6 +224,9 @@ test('public UI includes recovery history and legal disclosures', () => {
   assert.match(html, /最近生成任务/);
   assert.match(html, /privacy\.html/);
   assert.match(html, /terms\.html/);
+  assert.match(html, /AI 智能生成 3 版/);
+  assert.match(html, /name="script_provider" value="qwen"/);
+  assert.match(html, /name="script_provider" value="deepseek"/);
   assert.match(source, /Idempotency-Key/);
   assert.match(source, /open-niulai:video-jobs/);
   assert.match(source, /open-niulai:creator-draft/);

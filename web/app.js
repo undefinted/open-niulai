@@ -208,12 +208,21 @@ function restoreCreatorDraft() {
   }
 }
 
+function updateCreatorAction() {
+  const provider = new FormData(form).get('script_provider') || 'local';
+  const label = form.querySelector('button[type="submit"] span');
+  if (label && !form.querySelector('button[type="submit"]').disabled) {
+    label.textContent = provider === 'local' ? '生成制作方案' : '智能生成 3 个脚本';
+  }
+}
+
 let draftTimer = null;
 form.addEventListener('input', () => {
   clearTimeout(draftTimer);
   draftTimer = setTimeout(saveCreatorDraft, 250);
 });
 form.addEventListener('change', saveCreatorDraft);
+form.addEventListener('change', updateCreatorAction);
 
 form.addEventListener('submit', async event => {
   event.preventDefault();
@@ -244,7 +253,7 @@ form.addEventListener('submit', async event => {
     notify(error.message);
   } finally {
     button.disabled = false;
-    button.querySelector('span').textContent = '生成制作方案';
+    updateCreatorAction();
   }
 });
 
@@ -685,5 +694,6 @@ function resumeJob(jobId, provider, trigger) {
 }
 
 restoreCreatorDraft();
+updateCreatorAction();
 renderJobHistory();
 initializeService();

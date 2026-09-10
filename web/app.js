@@ -4,7 +4,7 @@ const toast = document.querySelector('#toast');
 let currentPack = null;
 let pendingCreatorPayload = null;
 let providerState = {providers: [], connected: [], secure_context: false};
-let selectedWorkflow = 'minimax-h3';
+let selectedWorkflow = 'official-seedance';
 let firstFrameDataUrl = null;
 let sessionState = null;
 let authMode = 'login';
@@ -466,7 +466,7 @@ async function loadProviders() {
     const badge = connected ? '已临时连接' : !providerState.secure_context ? 'HTTPS 后可连接' : !connectionReady ? '服务配置中' : 'API Key';
     let action = '';
     if (connected) action = `<button type="button" class="secondary" data-disconnect="${item.id}">断开</button>`;
-    else if (item.connection === 'api_key' && connectionReady) action = `<form class="key-form ${item.id === 'seedance' ? 'seedance-key-form' : ''}" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="${escapeHtml(item.name)} API Key">${item.id === 'minimax' ? '<select name="region" aria-label="MiniMax API 区域"><option value="cn">中国站</option><option value="global">国际站</option></select>' : ''}${item.id === 'seedance' ? '<input name="model_id" required minlength="6" placeholder="Seedance 模型 ID / 接入点 ID" value="doubao-seedance-1-0-lite-t2v-250428">' : ''}<button class="secondary" type="submit">连接</button></form>`;
+    else if (item.connection === 'api_key' && connectionReady) action = `<form class="key-form ${item.id === 'seedance' ? 'seedance-key-form' : ''}" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="${escapeHtml(item.name)} API Key">${item.id === 'minimax' ? '<select name="region" aria-label="MiniMax API 区域"><option value="cn">中国站</option><option value="global">国际站</option></select>' : ''}${item.id === 'seedance' ? '<input name="model_id" required minlength="6" aria-label="Seedance 模型 ID" placeholder="Seedance 模型 ID" value="doubao-seedance-1-5-pro-251215">' : ''}<button class="secondary" type="submit">${item.id === 'seedance' ? '验证并连接' : '连接'}</button></form>`;
     else if (item.account_url) action = `<a class="secondary action-link" href="${item.account_url}" target="_blank" rel="noreferrer">前往平台 ↗</a>`;
     const purpose = item.capability === 'script' ? '用于生成三个不同脚本候选，不参与视频扣费。' : item.id === 'minimax' ? '直接调用 MiniMax 官方 H3 API，费用从你的 MiniMax 账户扣除。' : item.id === 'seedance' ? '直接调用火山方舟视频生成 API，需要 API Key 和已开通的 Seedance 模型 ID。' : '用于提交视频生成任务，费用从你的 RunningHub 账户扣除。';
     return `<article class="provider-row"><div><span class="provider-badge">${badge}</span><h3>${escapeHtml(item.name)}</h3><p>${purpose} 凭证不写入磁盘。</p></div>${action}</article>`;
@@ -483,7 +483,9 @@ async function loadVideoInstances() {
   workflowPresets['official-minimax-h3'] = {id:'official-minimax-h3', name:'MiniMax H3 · 官方 API', badge:'官方直连', description:'直接调用 MiniMax 官方多模态视频 API，不经过 RunningHub。', supports_image:true, configured:true, mode:'official_api', provider:'minimax', estimated_cost:'按 MiniMax 官方账户实际用量结算'};
   workflowPresets['official-seedance'] = {id:'official-seedance', name:'Seedance · 火山方舟官方 API', badge:'官方直连', description:'直接调用火山方舟视频生成 API，不经过 RunningHub。', supports_image:true, configured:true, mode:'official_api', provider:'seedance', estimated_cost:'按火山方舟账户实际用量结算'};
   workflowPresets.custom = custom;
-  if (!workflowPresets[selectedWorkflow]) selectedWorkflow = Object.keys(workflowPresets)[0] || 'custom';
+  if (!workflowPresets[selectedWorkflow] || (workflowPresets[selectedWorkflow].mode !== 'workflow' && !workflowPresets[selectedWorkflow].configured)) {
+    selectedWorkflow = workflowPresets['official-seedance'] ? 'official-seedance' : Object.keys(workflowPresets).find(id => workflowPresets[id].configured) || 'custom';
+  }
 }
 
 function currentWorkflowConfig() {
@@ -549,10 +551,10 @@ function updateGenerationStudio() {
 function updateWorkflowPreset() {
   const select = document.querySelector('#video-generator');
   if (!select) return;
-  select.innerHTML = Object.values(workflowPresets).map(preset => {
-    const unavailable = preset.mode !== 'workflow' && !preset.configured;
-    const suffix = unavailable ? ` · ${preset.availability_reason || '平台尚未接入'}` : '';
-    return `<option value="${escapeHtml(preset.id)}" ${unavailable ? 'disabled' : ''}>${escapeHtml(preset.name)}${escapeHtml(suffix)}</option>`;
+  const availablePresets = Object.values(workflowPresets).filter(preset => preset.mode === 'workflow' || preset.configured);
+  select.innerHTML = availablePresets.map(preset => {
+    const channel = preset.mode === 'ai_app' ? ' · RunningHub AI 实例' : '';
+    return `<option value="${escapeHtml(preset.id)}">${escapeHtml(preset.name)}${escapeHtml(channel)}</option>`;
   }).join('');
   select.value = selectedWorkflow;
   const preset = workflowPresets[selectedWorkflow];
@@ -663,15 +665,31 @@ dialog.addEventListener('submit', async event => {
   event.preventDefault();
   const formData = new FormData(form);
   const apiKey = formData.get('api_key');
-  form.querySelector('button').disabled = true;
+  const button = form.querySelector('button');
+  const originalLabel = button.textContent;
+  button.disabled = true;
   try {
     if (!apiKey || apiKey.length < 12) throw new Error('API Key 格式无效');
-    sessionStorage.setItem(connectionKey(form.dataset.provider), JSON.stringify({api_key:apiKey, region:formData.get('region') || 'cn', model_id:formData.get('model_id') || ''}));
+    const connection = {api_key:apiKey, region:formData.get('region') || 'cn', model_id:formData.get('model_id') || ''};
+    if (form.dataset.provider === 'seedance') {
+      button.textContent = '验证中';
+      const verification = await fetch('/api/providers/verify', {
+        method:'POST',
+        headers:{'X-Provider-Id':'seedance', 'X-Provider-Key':connection.api_key, 'X-Provider-Model':connection.model_id},
+      });
+      const result = await verification.json();
+      if (!verification.ok) throw new Error(result.error || '火山方舟连接验证失败');
+      if (result.model_available === false) {
+        const choices = result.seedance_models?.length ? ` 当前 Key 可见：${result.seedance_models.join('、')}` : '';
+        throw new Error(`API Key 有效，但未找到模型 ${connection.model_id}。请先开通该模型或更换模型 ID。${choices}`);
+      }
+    }
+    sessionStorage.setItem(connectionKey(form.dataset.provider), JSON.stringify(connection));
     form.reset();
     await loadProviders();
-    notify('模型账户已连接，仅保留在当前标签页');
+    notify(form.dataset.provider === 'seedance' ? '火山方舟 API Key 与模型权限验证通过' : '模型账户已连接，仅保留在当前标签页');
   } catch (error) { notify(error.message); }
-  finally { form.querySelector('button').disabled = false; }
+  finally { button.disabled = false; button.textContent = originalLabel; }
 });
 
 dialog.addEventListener('click', async event => {

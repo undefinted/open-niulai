@@ -6,7 +6,7 @@ import { createPack } from '../functions/_lib/pack.js';
 import { generateScriptCandidates } from '../functions/_lib/script-providers.js';
 import { evaluatePack } from '../functions/_lib/quality.js';
 import { buildPayload } from '../functions/_lib/minimax.js';
-import { buildSeedancePayload } from '../functions/_lib/seedance.js';
+import { buildSeedancePayload, verifySeedanceConnection } from '../functions/_lib/seedance.js';
 import { aiAppCatalog, buildAiAppNodeInfo, buildNodeInfo, normalizeOutputs, publicAiApp } from '../functions/_lib/runninghub.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, getSession, validateIdempotencyKey } from '../functions/_lib/session.js';
 import { authenticatedUser, loginUser, registerUser } from '../functions/_lib/auth.js';
@@ -115,6 +115,24 @@ test('Seedance payload includes model controls and an optional first frame', () 
   assert.equal(payload.model, 'seedance-test-model');
   assert.match(payload.content[0].text, /--ratio 16:9 --duration 10 --resolution 720p/);
   assert.equal(payload.content[1].role, 'first_frame');
+});
+
+test('Seedance connection verification checks the key and selected model without creating a task', async () => {
+  const originalFetch = globalThis.fetch;
+  let providerRequest;
+  globalThis.fetch = async (url, options) => {
+    providerRequest = {url:String(url), authorization:options.headers.Authorization};
+    return Response.json({data:[{id:'doubao-seedance-1-5-pro-251215'}]});
+  };
+  try {
+    const result = await verifySeedanceConnection(new Request('https://example.com', {headers:{
+      'X-Provider-Key':'ark-test-key-12345', 'X-Provider-Model':'doubao-seedance-1-5-pro-251215',
+    }}));
+    assert.equal(result.authenticated, true);
+    assert.equal(result.model_available, true);
+    assert.match(providerRequest.url, /\/api\/v3\/models$/);
+    assert.equal(providerRequest.authorization, 'Bearer ark-test-key-12345');
+  } finally { globalThis.fetch = originalFetch; }
 });
 
 test('RunningHub maps prompt and uploaded first frame to workflow nodes', () => {
@@ -272,6 +290,8 @@ test('public UI includes recovery history and legal disclosures', () => {
   assert.match(html, /id="account-dialog"/);
   assert.match(source, /MiniMax H3 · 官方 API/);
   assert.match(source, /Seedance · 火山方舟官方 API/);
+  assert.match(source, /doubao-seedance-1-5-pro-251215/);
+  assert.doesNotMatch(source, /doubao-seedance-1-0-lite-t2v-250428/);
   assert.match(html, /data-subject="猫" data-template="ad_hook" data-tone="workplace"/);
   assert.match(html, /data-line="最后改一次" data-duration="10"/);
   assert.match(source, /Idempotency-Key/);

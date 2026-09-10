@@ -34,3 +34,14 @@ export async function seedanceRequest(method, path, apiKey, body = undefined) {
   }
   return result;
 }
+
+export async function verifySeedanceConnection(request) {
+  const {apiKey, model} = seedanceCredentials(request);
+  const result = await seedanceRequest('GET', '/models', apiKey);
+  const modelIds = Array.isArray(result.data) ? result.data.map(item => String(item?.id || '')).filter(Boolean) : [];
+  return {
+    provider:'seedance', authenticated:true, model,
+    model_available:modelIds.length ? modelIds.includes(model) : null,
+    seedance_models:modelIds.filter(id => /seedance/i.test(id)).slice(0, 20),
+  };
+}

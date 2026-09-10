@@ -13,7 +13,9 @@ Production domain: `https://myyuanlai.xyz/`. Pages fallback: `https://open-niula
 - Build output directory: `dist`
 - Root directory: `/`
 
-No model API key is required in the Cloudflare project settings. A visitor's RunningHub key stays in that browser tab's `sessionStorage`, is sent only to the same-origin Function when creating or querying that visitor's task, and is never committed or written to application storage.
+No model API key is required in the Cloudflare project settings. A visitor's RunningHub, Qwen, or DeepSeek key stays in that browser tab's `sessionStorage`, is sent only to the same-origin Function for the requested operation, and is never committed or written to application storage.
+
+For a managed classroom demo, the deployer may optionally configure encrypted Pages secrets named `QWEN_API_KEY` and `DEEPSEEK_API_KEY`. The `/api/script-drafts` Function uses a visitor-supplied key first and falls back to the matching secret. Never define either value in `wrangler.jsonc`, client JavaScript, GitHub Actions logs, or plain Pages variables.
 
 ## Production bindings
 
@@ -59,7 +61,7 @@ For current RunningHub V2 AI applications, set `apiVersion` to `v2`. The server 
 6. Add `www.myyuanlai.xyz` as another custom domain and configure a redirect to the apex domain.
 7. Verify `https://myyuanlai.xyz/api/health` before enabling a paid RunningHub task.
 
-Do not add MiniMax keys, Alibaba credentials, Tencent credentials, private keys, or certificate files to GitHub or Cloudflare build variables.
+Do not add MiniMax keys, Alibaba credentials, Tencent credentials, private keys, or certificate files to GitHub or plain Cloudflare build variables. Values intentionally managed by Cloudflare must use encrypted Secrets.
 
 ## Local checks
 

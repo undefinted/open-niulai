@@ -12,7 +12,7 @@
     <a class="brand" href="/" aria-label="Open NiuLai 首页"><span class="brand-mark">来</span><strong>Open NiuLai</strong></a>
     <div class="top-actions">
       <span id="service-status" class="status"><i></i>正在检查服务</span>
-      <button id="connections-open" class="connection-trigger" type="button">连接 RunningHub</button>
+      <button id="connections-open" class="connection-trigger" type="button">连接模型账户</button>
       <a class="icon-link" href="https://github.com/undefinted/open-niulai" target="_blank" rel="noreferrer" title="GitHub" aria-label="GitHub">↗</a>
     </div>
   </header>
@@ -28,6 +28,10 @@
       <form id="creator-form" class="prompt-panel">
         <label class="prompt-label" for="prompt">你的短片想法</label>
         <textarea id="prompt" name="prompt" maxlength="500" required placeholder="例如：一只加班到凌晨的猫，以为关掉电脑就能下班，结果整个办公室跟着它回家。"></textarea>
+        <div class="style-cues" aria-label="原创荒诞短片创作提示">
+          <strong>写具体一点更容易出效果</strong>
+          <span>一个认真主角</span><span>一件小事</span><span>一个具体阻碍</span><span>一句重复台词</span><span>最后一秒揭示</span>
+        </div>
         <div class="examples" aria-label="示例创意">
           <button type="button" data-example="做一个加班到凌晨、试图逃离办公室的猫来">加班猫</button>
           <button type="button" data-example="甲方在交付前一分钟要求把五彩斑斓的黑做得更黑">甲方来</button>
@@ -35,6 +39,11 @@
         </div>
 
         <div class="controls">
+          <label>脚本模型<select id="script-provider" name="script_provider">
+            <option value="local">快速模板 · 无需密钥</option>
+            <option value="qwen">通义千问 · 3 个候选</option>
+            <option value="deepseek">DeepSeek · 3 个候选</option>
+          </select></label>
           <label>主角<input id="subject" name="subject" placeholder="猫" maxlength="20"></label>
           <label>结构<select id="template" name="template">
             <option value="ad_hook">危机广告</option>
@@ -49,6 +58,12 @@
             <option value="tragic">悲壮过头</option>
             <option value="uncanny">轻微诡异</option>
           </select></label>
+          <label>荒诞强度<select id="style-strength" name="style_strength">
+            <option value="restrained">克制</option>
+            <option value="standard" selected>标准</option>
+            <option value="extreme">放飞</option>
+          </select></label>
+          <label>重复台词<input id="required-line" name="required_line" placeholder="可留空，由模型设计" maxlength="60"></label>
           <label>时长<select id="duration" name="duration">
             <option value="10">10 秒</option>
             <option value="15" selected>15 秒</option>
@@ -62,6 +77,11 @@
           <button class="primary" type="submit"><span>生成制作方案</span><b>→</b></button>
         </div>
       </form>
+    </section>
+
+    <section id="script-candidates" class="script-candidates hidden" aria-labelledby="script-candidates-title">
+      <div class="section-head compact"><div><p class="eyebrow">脚本模型已完成</p><h2 id="script-candidates-title">挑一个最有感觉的版本</h2></div><span id="script-model-note" class="model-note"></span></div>
+      <div id="candidate-list" class="candidate-list" aria-live="polite"></div>
     </section>
 
     <section id="recent-jobs" class="recent-jobs hidden" aria-labelledby="recent-jobs-title">
@@ -102,8 +122,8 @@
 
   <footer><span>Open NiuLai · 万物皆可来，但每一个都要原创</span><nav><a href="/privacy.html">隐私说明</a><a href="/terms.html">服务条款</a><a href="https://github.com/undefinted/open-niulai/blob/main/docs/IP_POLICY.md">原创与 IP 边界</a></nav></footer>
   <dialog id="connections-dialog" aria-labelledby="connections-title">
-    <div class="dialog-head"><div><p class="eyebrow">统一生成账户</p><h2 id="connections-title">连接 RunningHub</h2></div><button id="connections-close" class="dialog-close" type="button" aria-label="关闭">×</button></div>
-    <p class="connection-intro">Open NiuLai 负责生成并整理脚本、首帧和任务状态，确认后由所选 RunningHub AI 实例生成视频，费用由你的 RunningHub 账户承担。</p>
+    <div class="dialog-head"><div><p class="eyebrow">仅当前标签页</p><h2 id="connections-title">连接模型账户</h2></div><button id="connections-close" class="dialog-close" type="button" aria-label="关闭">×</button></div>
+    <p class="connection-intro">千问或 DeepSeek 用于生成多样脚本，RunningHub 用于生成视频。密钥仅保存在当前标签页，关闭后自动清除。</p>
     <div id="security-notice" class="security-notice hidden"></div>
     <div id="provider-list" class="provider-list" aria-live="polite"></div>
   </dialog>

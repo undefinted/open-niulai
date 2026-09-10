@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { createPack } from '../functions/_lib/pack.js';
+import { generateScriptCandidates } from '../functions/_lib/script-providers.js';
 import { evaluatePack } from '../functions/_lib/quality.js';
 import { buildPayload } from '../functions/_lib/minimax.js';
 import { aiAppCatalog, buildAiAppNodeInfo, buildNodeInfo, normalizeOutputs, publicAiApp } from '../functions/_lib/runninghub.js';
@@ -20,6 +21,41 @@ test('Pages pack builder preserves the web contract', () => {
 
 test('Pages pack builder rejects an empty prompt', () => {
   assert.throws(() => createPack({ subject: '猫', prompt: '' }), /一句话创意/);
+});
+
+test('selected AI script is compiled into the production pack', () => {
+  const pack = createPack({
+    subject:'猫', prompt:'一只猫要准时下班', duration:15, script_provider:'qwen', style_strength:'extreme',
+    script_draft:{ title:'《考勤猫》', premise:'猫与打卡机谈判', hook:'打卡机先开口', mission:'在六点前完成打卡', obstacle:'打卡机每次都后退一步', repeated_line:'我已经下班了', reveal:'办公室其实在猫的纸箱里', shots:[
+      {action:'猫站在打卡机前举起爪子。', subtitle:'我已经下班了'},
+      {action:'打卡机后退，猫僵硬地向前滑一步。', subtitle:'我已经下班了'},
+      {action:'镜头定格，纸箱外出现更大的猫。', subtitle:'我已经下班了'},
+    ]},
+  });
+  assert.equal(pack.title, '《考勤猫》');
+  assert.equal(pack.story_design.mission, '在六点前完成打卡');
+  assert.equal(pack.story_design.style_strength, 'extreme');
+  assert.match(pack.video_shots[0].motion_prompt, /打卡机后退/);
+  assert.match(pack.video_shots[0].motion_prompt, /stepped low frame rate/);
+});
+
+test('Qwen script provider returns three validated and distinct candidates', async () => {
+  const originalFetch = globalThis.fetch;
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = {url:String(url), ...JSON.parse(options.body)};
+    const candidate = index => ({title:`《方案${index}》`, premise:`故事${index}`, hook:`开场${index}`, mission:`任务${index}`, obstacle:`阻碍${index}`, repeated_line:`台词${index}`, reveal:`揭示${index}`, shots:[
+      {action:`动作${index}-1`, subtitle:`台词${index}`}, {action:`动作${index}-2`, subtitle:`台词${index}`}, {action:`动作${index}-3`, subtitle:`台词${index}`},
+    ]});
+    return Response.json({choices:[{message:{content:JSON.stringify({candidates:[candidate(1),candidate(2),candidate(3)]})}}]});
+  };
+  try {
+    const result = await generateScriptCandidates({provider:'qwen', prompt:'一只加班的猫', duration:15}, {}, 'test-api-key-12345');
+    assert.equal(result.candidates.length, 3);
+    assert.equal(result.candidates[2].shots[2].beat, 'reveal');
+    assert.equal(request.model, 'qwen-plus');
+    assert.match(request.url, /dashscope/);
+  } finally { globalThis.fetch = originalFetch; }
 });
 
 test('quality gate records traceable evidence for a valid production pack', () => {
@@ -192,6 +228,8 @@ test('public UI includes recovery history and legal disclosures', () => {
   assert.match(source, /open-niulai:video-jobs/);
   assert.match(source, /open-niulai:creator-draft/);
   assert.match(source, /generation-readiness/);
+  assert.match(source, /data-use-style-reference/);
+  assert.match(source, /内置原创低模参考图/);
   assert.match(source, /feedback-form/);
   assert.match(source, /AI 输出质量门禁/);
   assert.match(source, /质量门禁未通过/);

@@ -10,7 +10,7 @@ export function onRequest(context) {
   };
   return json({
     ok: true,
-    version: '0.9.0',
+    version: '0.10.0',
     mode: 'cloudflare-pages',
     production_ready: Object.values(checks).every(Boolean),
     checks,

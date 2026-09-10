@@ -1,3 +1,5 @@
+import { ORIGINAL_LOW_POLY_ABSURD } from './style-profile.js';
+
 const TONES = {
   meme: 'funny, sincere, awkward internet meme', tragic: 'tragic but absurd, emotionally overcommitted',
   shortdrama: 'fast short-drama conflict and cliffhanger', uncanny: 'light uncanny valley, comedic, no gore',
@@ -55,22 +57,40 @@ export function createPack(payload) {
   const template = String(payload.template || 'ad_hook');
   if (!TEMPLATES[template]) throw new Error('未知的故事结构。');
   const duration = Number(payload.duration || 15);
-  const [mission, missionZh, defaultLine, reveal, revealZh] = TEMPLATES[template];
-  const line = String(payload.required_line || '').trim() || defaultLine;
-  const title = `《${subject}来》`;
+  const [defaultMission, defaultMissionZh, defaultLine, defaultReveal, defaultRevealZh] = TEMPLATES[template];
+  const draft = payload.script_draft && typeof payload.script_draft === 'object' ? payload.script_draft : null;
+  const missionZh = String(draft?.mission || defaultMissionZh).trim().slice(0, 160);
+  const mission = draft ? `complete this precise mission: ${missionZh}` : defaultMission;
+  const revealZh = String(draft?.reveal || defaultRevealZh).trim().slice(0, 220);
+  const reveal = draft ? `the final reveal lands: ${revealZh}` : defaultReveal;
+  const line = String(payload.required_line || draft?.repeated_line || '').trim().slice(0, 80) || defaultLine;
+  const title = String(draft?.title || `《${subject}来》`).trim().slice(0, 50);
   const tone = TONES[payload.tone] || String(payload.tone || '').trim() || TONES.meme;
+  const styleStrength = ['restrained', 'standard', 'extreme'].includes(payload.style_strength) ? payload.style_strength : 'standard';
+  const styleDirection = {
+    restrained: 'restrained deadpan absurdity, readable staging, one awkward pause',
+    standard: 'strong deadpan absurdity, deliberately broken low-budget staging, repeated line and delayed reveal',
+    extreme: 'escalating absurdity and visibly broken staging, while preserving one subject and one action per beat',
+  }[styleStrength];
   const [world, worldZh] = worldFor(subject, prompt);
   const character = characterFor(subject, prompt, tone);
-  const still = `Original scene for ${title}. ${character} Environment: ${world}. Extremely crude amateur low-poly 3D, wrong proportions, flat default viewport lighting, little shadow, clipping, awkward sincere pose, low-resolution texture. No copyrighted character, logo, exact film frame, polished studio animation, photorealism, cinematic lighting, or clean topology. Hard creative direction to honor: ${prompt}`;
-  const motion = `${duration}-second original short. Keep the first-frame subject and colors stable. Hard creative direction: ${prompt}. The protagonist tries to ${mission} in ${world}; jerky low-frame-rate movement, stiff head turn, sliding feet, delayed mouth motion for '${line}', then ${reveal}. One main action per shot, static camera or awkward slow push-in, hard cut at reveal. Avoid smooth cinematic animation, realistic physics, new characters, and camera shake.`;
-  const actions = { hook: `在${worldZh}中亮出${subject}主角与核心困境。`, conflict: `主角试图${missionZh}，动作真诚而机械地崩坏。`, reveal: `${revealZh}。` };
-  const subtitles = { hook: title, conflict: line, reveal: '下一个，谁来？' };
-  const script = timeline(duration).map(([start, end, beat]) => ({ time: `${start}-${end}s`, beat, action: actions[beat], subtitle: subtitles[beat] }));
+  const still = `Original independent scene for ${title}. ${character} Environment: ${world}. ${ORIGINAL_LOW_POLY_ABSURD.visual_prompt}. Story direction: ${prompt}. Avoid: ${ORIGINAL_LOW_POLY_ABSURD.negative_prompt}.`;
+  const slots = timeline(duration);
+  const fallbackActions = { hook: `在${worldZh}中亮出${subject}和一个微不足道却被认真对待的危机。`, conflict: `主角试图${missionZh}，失败后僵硬停顿，再重复同一句话。`, reveal: `${revealZh}，让前面的台词突然变了意思。` };
+  const fallbackSubtitles = { hook: title, conflict: line, reveal: line };
+  const draftShots = Array.isArray(draft?.shots) && draft.shots.length === 3 ? draft.shots : null;
+  const script = slots.map(([start, end, beat], index) => ({
+    time: `${start}-${end}s`, beat,
+    action: String(draftShots?.[index]?.action || fallbackActions[beat]).trim().slice(0, 300),
+    subtitle: String(draftShots?.[index]?.subtitle || fallbackSubtitles[beat]).trim().slice(0, 100),
+  }));
+  const beatPlan = script.map(item => `${item.time} ${item.action} Subtitle/voice: "${item.subtitle}"`).join(' | ');
+  const motion = `${duration}-second original low-budget 3D absurdist short. Keep the supplied first-frame subject, silhouette, colors, crude topology and environment stable. Story: ${prompt}. Mission: ${mission}. Style: ${styleDirection}. Beat plan: ${beatPlan}. Motion language: ${ORIGINAL_LOW_POLY_ABSURD.motion_prompt}. Use one main action per beat, then land the reveal: ${reveal}. Preserve roughness. Avoid: ${ORIGINAL_LOW_POLY_ABSURD.negative_prompt}.`;
   const shot = {
     shot_id: 'shot_001', duration: `${duration}s`, purpose: template,
     first_frame_prompt: `${still} The subject faces camera with clean subtitle space.`, motion_prompt: motion,
     camera: 'static medium-wide shot; optional awkward 5% push-in', subtitle: line, voiceover: line,
-    negative_prompt: 'polished 3D, cinematic light, smooth motion, realistic physics, extra limbs, new subjects, text artifacts',
+    negative_prompt: ORIGINAL_LOW_POLY_ABSURD.negative_prompt,
     runway_prompt: `Use the supplied first frame. ${motion}`,
     kling_prompt: `Lock the supplied image as subject reference; preserve face, silhouette, colors, and environment. ${motion}`,
     seedance_prompt: `Use character, first-frame, and poster references when supplied; keep continuity across the short. ${motion}`,
@@ -78,9 +98,11 @@ export function createPack(payload) {
   };
   return {
     schema_version: '0.1.0', title,
-    source: { subject, prompt, tone: String(payload.tone || 'meme'), template, duration, required_line: payload.required_line || null, platform: payload.platform || '通用短视频', language: 'zh-CN' },
+    source: { subject, prompt, tone: String(payload.tone || 'meme'), template, style_strength: styleStrength, script_provider: String(payload.script_provider || (draft ? 'ai' : 'local')), duration, required_line: payload.required_line || null, platform: payload.platform || '通用短视频', language: 'zh-CN' },
     constraint_report: { subject, creative_prompt: prompt, required_line: line, duration_seconds: duration, platform: payload.platform || '通用短视频', language: 'zh-CN' },
-    hook: `${subject}以最真诚、最不协调的方式，试图${missionZh}。`, character_bible: character, world, world_zh: worldZh, script,
+    hook: String(draft?.hook || `${subject}以最真诚、最不协调的方式，试图${missionZh}。`).trim().slice(0, 220), character_bible: character, world, world_zh: worldZh, script,
+    style_profile: { id: ORIGINAL_LOW_POLY_ABSURD.id, name: ORIGINAL_LOW_POLY_ABSURD.name, reference_asset: ORIGINAL_LOW_POLY_ABSURD.reference_asset },
+    story_design: { premise: String(draft?.premise || prompt).trim().slice(0, 300), mission: missionZh, obstacle: String(draft?.obstacle || '动作和环境以最笨拙的方式阻止主角').trim().slice(0, 200), repeated_line: line, reveal: revealZh, style_strength: styleStrength },
     image_prompts: {
       poster_scam: `Elegant original animated-film poster for ${title}; painterly ink-wash mood, mist, negative space, tiny symbolic ${subject} subject, no logos or embedded text, no crude 3D. Context: ${prompt}`,
       broken_footage_still: still,

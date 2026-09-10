@@ -1,13 +1,14 @@
 # Commercial MVP checklist
 
-Open NiuLai 0.9.0 is designed for a limited public beta using a BYOK model: creators connect their own RunningHub account, confirm each paid submission, and consume that account's quota. Open NiuLai does not resell model credits.
+Open NiuLai 0.10.0 is designed for a limited public beta using a BYOK model: creators connect their own script or video model account, confirm each paid submission, and consume that account's quota. Open NiuLai does not resell model credits.
 
 Every generated production pack passes through a deterministic quality gate before a paid workflow can be submitted. The report records constraint coverage, field completeness, timeline integrity, production readiness, evidence, and remediation. Its score validates engineering rules only; it does not claim to measure the final video's aesthetic quality.
 
 ## Implemented
 
 - One continuous flow from idea to script, workflow selection, paid confirmation, task state, and playable result.
-- API keys live only in the current browser tab. Access passwords and uploaded images are not persisted by Open NiuLai.
+- User-provided Qwen, DeepSeek, and RunningHub API keys live only in the current browser tab. Access passwords and uploaded images are not persisted by Open NiuLai.
+- Script generation returns three structured candidates and validates required story and shot fields before the selected draft can enter video production.
 - Signed anonymous workspaces, seven-day server-side job metadata, browser history, and resumable status polling.
 - Idempotency keys on paid submissions and no automatic retry of provider task creation.
 - Per-workspace paid-task rate limits, HTTPS detection, security headers, privacy notice, and beta terms.

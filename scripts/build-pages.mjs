@@ -8,6 +8,8 @@ await mkdir(dist, { recursive: true });
 await cp(new URL('../web/', import.meta.url), dist, { recursive: true });
 await mkdir(new URL('./demo/', dist), { recursive: true });
 await cp(new URL('../assets/demo/', import.meta.url), new URL('./demo/', dist), { recursive: true });
+await mkdir(new URL('./style/', dist), { recursive: true });
+await cp(new URL('../assets/style/', import.meta.url), new URL('./style/', dist), { recursive: true });
 await writeFile(new URL('./_headers', dist), `/*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

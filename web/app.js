@@ -2,6 +2,7 @@ const form = document.querySelector('#creator-form');
 const workspace = document.querySelector('#workspace');
 const toast = document.querySelector('#toast');
 let currentPack = null;
+let pendingCreatorPayload = null;
 let providerState = {providers: [], connected: [], secure_context: false};
 let selectedWorkflow = 'minimax-h3';
 let firstFrameDataUrl = null;
@@ -26,6 +27,11 @@ function getConnection(provider) {
 function providerHeaders(provider) {
   const connection = getConnection(provider);
   return connection ? {'X-Provider-Key': connection.api_key, 'X-Provider-Region': connection.region || 'cn'} : {};
+}
+
+function scriptProviderHeaders(provider) {
+  const connection = getConnection(provider);
+  return connection ? {'X-Script-Provider-Key': connection.api_key} : {};
 }
 
 function getWorkflowConfig(preset) {
@@ -127,15 +133,16 @@ function render(pack, {scroll = true} = {}) {
   localStorage.setItem(packDraftKey, JSON.stringify(pack));
   document.querySelector('#result-title').textContent = pack.title;
   document.querySelector('#result-hook').textContent = pack.hook;
-  document.querySelector('#tab-story').innerHTML = `${qualityMarkup(pack.quality_report)}<div class="story-grid">${pack.script.map((beat, index) => `
-    <article class="beat"><time>${escapeHtml(beat.time)} · 镜头 ${String(index + 1).padStart(2, '0')}</time><h3>${escapeHtml(beat.subtitle)}</h3><p>${escapeHtml(beat.action)}</p></article>`).join('')}</div>`;
+  const design = pack.story_design || {};
+  document.querySelector('#tab-story').innerHTML = `${qualityMarkup(pack.quality_report)}<div class="story-blueprint"><div><span>核心任务</span><strong>${escapeHtml(design.mission || pack.hook)}</strong></div><div><span>重复台词</span><strong>${escapeHtml(design.repeated_line || '')}</strong></div><div><span>最后揭示</span><strong>${escapeHtml(design.reveal || '')}</strong></div></div><div class="story-grid">${pack.script.map((beat, index) => `
+    <article class="beat editable-beat" data-beat-index="${index}"><time>${escapeHtml(beat.time)} · 镜头 ${String(index + 1).padStart(2, '0')}</time><label>画面动作<textarea class="beat-action" maxlength="300">${escapeHtml(beat.action)}</textarea></label><label>字幕或台词<input class="beat-subtitle" maxlength="100" value="${escapeHtml(beat.subtitle)}"></label></article>`).join('')}</div><div class="story-confirm"><div><strong>先把故事定下来</strong><span>修改动作和台词不会调用大模型，也不会消耗模型额度。</span></div><button class="primary" type="button" data-apply-story><span>确认脚本，进入视频</span><b>→</b></button></div>`;
 
   const visualLabels = {poster_scam:'宣传海报', broken_footage_still:'崩坏首帧', character_reference:'角色设定', meme_reaction:'反应特写'};
   document.querySelector('#tab-visual').innerHTML = `<div class="prompt-grid">${Object.entries(pack.image_prompts).map(([key, text]) => `
     <article class="prompt-card">${copyButton(text)}<span>图像提示词</span><h3>${visualLabels[key] || key}</h3><p>${escapeHtml(text)}</p></article>`).join('')}</div>`;
 
   const shot = pack.video_shots[0];
-  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 脚本已就绪</span><h3 id="generation-title">确认脚本，直接生成视频</h3><p id="generation-account-note">选择已经调试好的 RunningHub AI 实例，系统会自动填入脚本和素材。</p></div><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">未上传首帧：文本直出</b></label><label class="model-select"><span>第 3 步 · AI 实例</span><select id="video-generator" aria-label="选择 RunningHub AI 实例"></select></label><div id="generation-action"></div><label class="script-review"><span>确认或修改最终视频脚本</span><textarea id="video-script-prompt" maxlength="7000">${escapeHtml(shot.motion_prompt)}</textarea><small>这里的内容会作为最终提示词传给所选 AI 实例。</small></label><div id="workflow-summary" class="workflow-summary"></div><ol id="generation-readiness" class="generation-readiness" aria-label="生成准备状态"></ol><details id="workflow-config" class="workflow-config hidden"><summary>高级：使用自定义工作流</summary><div class="advanced-workflow"><div><span class="provider-badge">专业模式</span><h4 id="workflow-config-title">绑定 RunningHub 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="从 RunningHub API 调用页复制"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选，不保存）<input id="rh-access-password" type="password" autocomplete="off"></label><p>仅自定义工作流需要这些信息。AI 实例的 WebAppId 和参数映射由平台后台维护，不会显示给普通用户。</p></div></details><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>两阶段生成</strong><span>Open NiuLai 先生成可修改的脚本和分镜；确认后，RunningHub AI 实例负责生成视频并返回成片。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
+  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 脚本已就绪</span><h3 id="generation-title">确认脚本，直接生成视频</h3><p id="generation-account-note">选择已经调试好的 RunningHub AI 实例，系统会自动填入脚本和素材。</p></div><div class="frame-source"><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">上传粗粝低模首帧 · 推荐</b><small>参考图尽量使用单一主角、简单背景、低多边形造型；照片会让模型更倾向写实。</small></label><button class="style-reference" type="button" data-use-style-reference><img src="${escapeHtml(pack.style_profile?.reference_asset || '/style/original-lowpoly-office-reference-v1.png')}" alt="原创粗粝低模参考图"><span>使用内置原创参考图</span></button></div><label class="model-select"><span>第 3 步 · AI 实例</span><select id="video-generator" aria-label="选择 RunningHub AI 实例"></select></label><div id="generation-action"></div><label class="script-review"><span>确认或修改最终视频脚本</span><textarea id="video-script-prompt" maxlength="7000">${escapeHtml(shot.motion_prompt)}</textarea><small>这里是经过风格编译的模型提示词。故事内容以“故事”页中的中文脚本为准。</small></label><div id="workflow-summary" class="workflow-summary"></div><ol id="generation-readiness" class="generation-readiness" aria-label="生成准备状态"></ol><details id="workflow-config" class="workflow-config hidden"><summary>高级：使用自定义工作流</summary><div class="advanced-workflow"><div><span class="provider-badge">专业模式</span><h4 id="workflow-config-title">绑定 RunningHub 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="从 RunningHub API 调用页复制"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选，不保存）<input id="rh-access-password" type="password" autocomplete="off"></label><p>仅自定义工作流需要这些信息。AI 实例的 WebAppId 和参数映射由平台后台维护，不会显示给普通用户。</p></div></details><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>脚本与画面分层</strong><span>千问或 DeepSeek 负责故事多样性；Open NiuLai 固定风格和分镜约束；RunningHub AI 实例负责生成视频。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
     <div><dt>镜头</dt><dd>${escapeHtml(shot.camera)}</dd></div><div><dt>台词</dt><dd>${escapeHtml(shot.voiceover)}</dd></div><div><dt>避免</dt><dd>${escapeHtml(shot.negative_prompt)}</dd></div>
   </dl></aside></div><div class="result-player"><video controls muted loop playsinline poster="/demo/mao-first-frame.png"><source src="/demo/mao-lai-svd-captioned.mp4" type="video/mp4"></video><p><strong>参考样片</strong><br>当前播放的是本地 SVD 验证样片，不是本次输入即时生成的成片。</p></div></div>`;
   document.querySelector('#tab-video').insertAdjacentHTML('afterbegin', qualityMarkup(pack.quality_report, true));
@@ -148,10 +155,37 @@ function render(pack, {scroll = true} = {}) {
     <article class="publish-card"><span>首评与标签</span><h3>${escapeHtml(copy.first_comment)}</h3><p>${copy.hashtags.map(escapeHtml).join(' ')}</p>${copyButton(`${copy.first_comment}\n${copy.hashtags.join(' ')}`)}</article>
   </div>`;
   workspace.classList.remove('hidden');
+  showTab('story');
+  if (scroll) requestAnimationFrame(() => document.querySelector('.workspace-head').scrollIntoView({behavior:'smooth', block:'start'}));
+}
+
+function showTab(name) {
   document.querySelectorAll('.tabs button, .tab-view').forEach(node => node.classList.remove('active'));
-  document.querySelector('[data-tab="video"]').classList.add('active');
-  document.querySelector('#tab-video').classList.add('active');
-  if (scroll) requestAnimationFrame(() => document.querySelector('.generation-studio').scrollIntoView({behavior:'smooth', block:'start'}));
+  document.querySelector(`[data-tab="${name}"]`)?.classList.add('active');
+  document.querySelector(`#tab-${name}`)?.classList.add('active');
+}
+
+async function createPack(payload, scriptDraft = null) {
+  const response = await fetch('/api/packs', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({...payload, script_draft:scriptDraft}),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || '制作方案生成失败');
+  document.querySelector('#script-candidates').classList.add('hidden');
+  render(result.pack);
+}
+
+function renderScriptCandidates(result) {
+  const section = document.querySelector('#script-candidates');
+  document.querySelector('#script-model-note').textContent = `${result.provider === 'qwen' ? '通义千问' : 'DeepSeek'} · ${result.model}`;
+  document.querySelector('#candidate-list').innerHTML = result.candidates.map((draft, index) => `<article class="candidate-card">
+    <div><span>方案 ${String(index + 1).padStart(2, '0')}</span><h3>${escapeHtml(draft.title)}</h3><p>${escapeHtml(draft.premise)}</p></div>
+    <dl><div><dt>任务</dt><dd>${escapeHtml(draft.mission)}</dd></div><div><dt>阻碍</dt><dd>${escapeHtml(draft.obstacle)}</dd></div><div><dt>重复台词</dt><dd>${escapeHtml(draft.repeated_line)}</dd></div><div><dt>揭示</dt><dd>${escapeHtml(draft.reveal)}</dd></div></dl>
+    <button class="primary" type="button" data-script-draft="${encodeURIComponent(JSON.stringify(draft))}"><span>使用这个脚本</span><b>→</b></button>
+  </article>`).join('');
+  section.classList.remove('hidden');
+  section.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 function saveCreatorDraft() {
@@ -189,16 +223,43 @@ form.addEventListener('submit', async event => {
   const data = Object.fromEntries(new FormData(form));
   data.duration = Number(data.duration);
   try {
-    const response = await fetch('/api/packs', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || '生成失败');
+    pendingCreatorPayload = data;
+    if (data.script_provider === 'local') {
+      await createPack(data);
+    } else {
+      const connection = getConnection(data.script_provider);
+      if (!connection) {
+        await openConnections();
+        throw new Error(`请先连接${data.script_provider === 'qwen' ? '通义千问' : ' DeepSeek'}脚本账户`);
+      }
+      const response = await fetch('/api/script-drafts', {
+        method:'POST', headers:{'Content-Type':'application/json', ...scriptProviderHeaders(data.script_provider)}, body:JSON.stringify({...data, provider:data.script_provider}),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '候选脚本生成失败');
+      renderScriptCandidates(result);
+    }
     saveCreatorDraft();
-    render(result.pack);
   } catch (error) {
     notify(error.message);
   } finally {
     button.disabled = false;
     button.querySelector('span').textContent = '生成制作方案';
+  }
+});
+
+document.querySelector('#candidate-list').addEventListener('click', async event => {
+  const button = event.target.closest('[data-script-draft]');
+  if (!button || !pendingCreatorPayload) return;
+  button.disabled = true;
+  button.querySelector('span').textContent = '正在整理…';
+  try {
+    const draft = JSON.parse(decodeURIComponent(button.dataset.scriptDraft));
+    await createPack(pendingCreatorPayload, draft);
+  } catch (error) {
+    button.disabled = false;
+    button.querySelector('span').textContent = '使用这个脚本';
+    notify(error.message);
   }
 });
 
@@ -211,12 +272,60 @@ document.querySelectorAll('[data-example]').forEach(button => button.addEventLis
 document.querySelector('.tabs').addEventListener('click', event => {
   const button = event.target.closest('[data-tab]');
   if (!button) return;
-  document.querySelectorAll('.tabs button, .tab-view').forEach(node => node.classList.remove('active'));
-  button.classList.add('active');
-  document.querySelector(`#tab-${button.dataset.tab}`).classList.add('active');
+  showTab(button.dataset.tab);
 });
 
 workspace.addEventListener('click', async event => {
+  const styleReference = event.target.closest('[data-use-style-reference]');
+  if (styleReference) {
+    styleReference.disabled = true;
+    try {
+      const response = await fetch(styleReference.querySelector('img').src);
+      if (!response.ok) throw new Error('内置参考图加载失败');
+      const blob = await response.blob();
+      firstFrameDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('参考图读取失败'));
+        reader.readAsDataURL(blob);
+      });
+      document.querySelector('#first-frame').value = '';
+      document.querySelector('#frame-name').textContent = '已选择内置原创低模参考图';
+      styleReference.classList.add('selected');
+      updateGenerationStudio();
+      notify('已使用内置原创参考图');
+    } catch (error) { notify(error.message); }
+    finally { styleReference.disabled = false; }
+    return;
+  }
+  const confirmStory = event.target.closest('[data-apply-story]');
+  if (confirmStory && currentPack) {
+    confirmStory.disabled = true;
+    confirmStory.querySelector('span').textContent = '正在编译…';
+    const shots = [...document.querySelectorAll('.editable-beat')].map((item, index) => ({
+      beat:['hook','conflict','reveal'][index],
+      action:item.querySelector('.beat-action').value.trim(),
+      subtitle:item.querySelector('.beat-subtitle').value.trim(),
+    }));
+    if (shots.some(shot => !shot.action)) {
+      confirmStory.disabled = false;
+      confirmStory.querySelector('span').textContent = '确认脚本，进入视频';
+      notify('每个镜头都需要一个可见动作');
+      return;
+    }
+    const design = currentPack.story_design || {};
+    const draft = {title:currentPack.title, premise:design.premise || currentPack.source.prompt, hook:currentPack.hook, mission:design.mission, obstacle:design.obstacle, repeated_line:design.repeated_line, reveal:design.reveal, shots};
+    try {
+      await createPack({...currentPack.source, script_provider:currentPack.source.script_provider || 'local'}, draft);
+      showTab('video');
+      document.querySelector('.generation-studio').scrollIntoView({behavior:'smooth', block:'start'});
+    } catch (error) {
+      confirmStory.disabled = false;
+      confirmStory.querySelector('span').textContent = '确认脚本，进入视频';
+      notify(error.message);
+    }
+    return;
+  }
   const button = event.target.closest('[data-copy]');
   if (!button) return;
   await navigator.clipboard.writeText(decodeURIComponent(button.dataset.copy));
@@ -245,14 +354,16 @@ async function loadProviders() {
   notice.textContent = !providerState.secure_context
     ? '当前站点使用 HTTP，为防止凭证泄露，API Key 连接已禁用。配置 HTTPS 后自动开放。'
     : providerState.generation_ready === false ? '站点正在配置签名会话、任务存储和限流，完成前不会接收 API Key 或付费任务。' : '';
-  document.querySelector('#provider-list').innerHTML = providerState.providers.filter(item => item.id === 'runninghub').map(item => {
+  document.querySelector('#provider-list').innerHTML = providerState.providers.filter(item => ['qwen','deepseek','runninghub'].includes(item.id)).map(item => {
     const connected = providerState.connected.includes(item.id);
-    const badge = connected ? '已临时连接' : providerState.generation_ready === false ? '服务配置中' : item.connection === 'api_key' ? (providerState.secure_context ? 'API Key' : 'HTTPS 后可连接') : item.connection === 'external' ? '跳转使用' : '演示可用';
+    const connectionReady = providerState.secure_context && (item.capability === 'script' || providerState.generation_ready !== false);
+    const badge = connected ? '已临时连接' : !providerState.secure_context ? 'HTTPS 后可连接' : !connectionReady ? '服务配置中' : 'API Key';
     let action = '';
     if (connected) action = `<button type="button" class="secondary" data-disconnect="${item.id}">断开</button>`;
-    else if (item.connection === 'api_key' && providerState.secure_context && providerState.generation_ready !== false) action = `<form class="key-form" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="RunningHub API Key"><button class="secondary" type="submit">连接</button></form>`;
+    else if (item.connection === 'api_key' && connectionReady) action = `<form class="key-form" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="${escapeHtml(item.name)} API Key"><button class="secondary" type="submit">连接</button></form>`;
     else if (item.account_url) action = `<a class="secondary action-link" href="${item.account_url}" target="_blank" rel="noreferrer">前往平台 ↗</a>`;
-    return `<article class="provider-row"><div><span class="provider-badge">${badge}</span><h3>${escapeHtml(item.name)}</h3><p>${item.connection === 'api_key' ? '生成费用从你的平台账户扣除，凭证不写入磁盘。' : item.connection === 'external' ? '复制制作包内容后，在模型平台官网完成生成。' : '可直接查看仓库内经过验证的 SVD 样片。'}</p></div>${action}</article>`;
+    const purpose = item.capability === 'script' ? '用于生成三个不同脚本候选，不参与视频扣费。' : '用于提交视频生成任务，费用从你的 RunningHub 账户扣除。';
+    return `<article class="provider-row"><div><span class="provider-badge">${badge}</span><h3>${escapeHtml(item.name)}</h3><p>${purpose} 凭证不写入磁盘。</p></div>${action}</article>`;
   }).join('');
   updateGenerationStudio();
 }
@@ -360,7 +471,7 @@ document.addEventListener('change', event => {
   }
   if (event.target.id === 'first-frame') {
     const file = event.target.files[0];
-    if (!file) { firstFrameDataUrl = null; document.querySelector('#frame-name').textContent = '未上传首帧：文本直出'; updateGenerationStudio(); return; }
+    if (!file) { firstFrameDataUrl = null; document.querySelector('#frame-name').textContent = '上传粗粝低模首帧 · 推荐'; updateGenerationStudio(); return; }
     if (file.size > 10 * 1024 * 1024) { notify('首帧图片不能超过 10 MB'); event.target.value = ''; return; }
     const reader = new FileReader();
     reader.onload = () => { firstFrameDataUrl = reader.result; document.querySelector('#frame-name').textContent = `${file.name} · 首帧引导`; updateGenerationStudio(); };

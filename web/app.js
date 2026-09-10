@@ -4,7 +4,7 @@ const toast = document.querySelector('#toast');
 let currentPack = null;
 let pendingCreatorPayload = null;
 let providerState = {providers: [], connected: [], secure_context: false};
-let selectedWorkflow = 'official-seedance';
+let selectedWorkflow = 'rh-seedance-25-text';
 let firstFrameDataUrl = null;
 let sessionState = null;
 let authMode = 'login';
@@ -20,11 +20,14 @@ let workflowPresets = {
   'minimax-h3-style': {id:'minimax-h3-style', name:'MiniMax H3 · 风格参考生成', badge:'风格优先', description:'仅企业共享 API Key 可调用。', supports_image:true, configured:false, mode:'standard_model', uses_builtin_style_reference:true, availability_reason:'消费级 Key 不可用'},
   'minimax-h3': {id:'minimax-h3', name:'MiniMax H3 成片实例', badge:'快速出片', description:'适合文本直出、首帧引导和带声音的短片。', supports_image:true, configured:false, mode:'ai_app'},
   'seedance': {id:'seedance', name:'Seedance 成片实例', badge:'高质量', description:'适合强调镜头表现、角色一致性和参考素材的视频。', supports_image:true, configured:false, mode:'ai_app'},
-  'custom': {id:'custom', name:'自定义工作流', badge:'专业模式', description:'高级用户可以运行自己在 RunningHub 中保存的工作流。', supports_image:true, configured:true, mode:'workflow'},
 };
 
 function getConnection(provider) {
-  try { return JSON.parse(sessionStorage.getItem(connectionKey(provider)) || 'null'); }
+  try {
+    const connection = JSON.parse(sessionStorage.getItem(connectionKey(provider)) || 'null');
+    if (provider === 'seedance' && /^apikey-/i.test(String(connection?.api_key || ''))) return null;
+    return connection;
+  }
   catch { return null; }
 }
 
@@ -59,6 +62,14 @@ function safeExternalUrl(value) {
   } catch { return null; }
 }
 
+function friendlyJobError(error) {
+  const message = String(error || '');
+  if (message === '工作流运行失败') return 'RunningHub AI 应用实例运行失败。';
+  if (/RunningHub 805|APIKEY_TASK_STATUS_ERROR/.test(message)) return '该任务由另一把 RunningHub API Key 创建，当前 Key 无法查询；请移除此记录并新建实例任务。';
+  if (/API key format is incorrect/i.test(message)) return '火山方舟 API Key 格式错误：应复制 API Key 列中的真实密钥，不要复制 apikey- 开头的资源 ID。';
+  return message;
+}
+
 function saveJob(job) {
   const safe = {
     id:String(job.id), provider:String(job.provider || 'runninghub'), model:String(job.model || 'RunningHub Workflow'),
@@ -78,13 +89,15 @@ function renderJobHistory() {
   const section = document.querySelector('#recent-jobs');
   section.classList.toggle('hidden', jobs.length === 0);
   document.querySelector('#job-history').innerHTML = jobs.map(job => {
-    const preset = job.generation_mode === 'ai_app' ? job.model : workflowPresets[job.workflow_preset]?.name || job.model;
+    const preset = ['ai_app','dynamic_ai_app'].includes(job.generation_mode) ? job.model : workflowPresets[job.workflow_preset]?.name || job.model;
     const date = new Date(job.created_at * 1000).toLocaleString('zh-CN', {hour12:false});
     const state = {queued:'排队中', running:'生成中', succeeded:'已完成', failed:'失败', cancelled:'已取消', expired:'已过期', timeout:'查询已暂停'}[job.status] || job.status;
     const action = job.video_url
       ? `<a class="secondary" href="${escapeHtml(job.video_url)}" target="_blank" rel="noreferrer">打开成片</a>`
-      : `<button class="secondary" type="button" data-resume-job="${encodeURIComponent(job.id)}" data-provider="${escapeHtml(job.provider)}">${job.status === 'failed' ? '重新查询状态' : '恢复查询'}</button>`;
-    const failure = job.error ? `<p class="history-error">${escapeHtml(job.error)}</p>` : '';
+      : job.status === 'failed'
+        ? `<button class="secondary" type="button" data-remove-job="${encodeURIComponent(job.id)}" data-provider="${escapeHtml(job.provider)}">移除失败记录</button>`
+        : `<button class="secondary" type="button" data-resume-job="${encodeURIComponent(job.id)}" data-provider="${escapeHtml(job.provider)}">恢复查询</button>`;
+    const failure = job.error ? `<p class="history-error">${escapeHtml(friendlyJobError(job.error))}</p>` : '';
     return `<article class="history-row"><div><h3>${escapeHtml(preset)}</h3><p>任务 ${escapeHtml(job.id)} · ${escapeHtml(date)}</p>${failure}</div><span class="history-state ${escapeHtml(job.status)}">${escapeHtml(state)}</span><div class="history-actions">${action}</div></article>`;
   }).join('');
 }
@@ -478,13 +491,11 @@ async function loadVideoInstances() {
   const response = await fetch('/api/video-instances');
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'AI 实例目录加载失败');
-  const custom = workflowPresets.custom;
   workflowPresets = Object.fromEntries(result.instances.map(instance => [instance.id, {...instance, mode:instance.mode || 'ai_app'}]));
   workflowPresets['official-minimax-h3'] = {id:'official-minimax-h3', name:'MiniMax H3 · 官方 API', badge:'官方直连', description:'直接调用 MiniMax 官方多模态视频 API，不经过 RunningHub。', supports_image:true, configured:true, mode:'official_api', provider:'minimax', estimated_cost:'按 MiniMax 官方账户实际用量结算'};
   workflowPresets['official-seedance'] = {id:'official-seedance', name:'Seedance · 火山方舟官方 API', badge:'官方直连', description:'直接调用火山方舟视频生成 API，不经过 RunningHub。', supports_image:true, configured:true, mode:'official_api', provider:'seedance', estimated_cost:'按火山方舟账户实际用量结算'};
-  workflowPresets.custom = custom;
-  if (!workflowPresets[selectedWorkflow] || (workflowPresets[selectedWorkflow].mode !== 'workflow' && !workflowPresets[selectedWorkflow].configured)) {
-    selectedWorkflow = workflowPresets['official-seedance'] ? 'official-seedance' : Object.keys(workflowPresets).find(id => workflowPresets[id].configured) || 'custom';
+  if (!workflowPresets[selectedWorkflow] || !workflowPresets[selectedWorkflow].configured) {
+    selectedWorkflow = workflowPresets['rh-seedance-25-text'] ? 'rh-seedance-25-text' : Object.keys(workflowPresets).find(id => workflowPresets[id].configured) || 'official-seedance';
   }
 }
 
@@ -551,7 +562,7 @@ function updateGenerationStudio() {
 function updateWorkflowPreset() {
   const select = document.querySelector('#video-generator');
   if (!select) return;
-  const availablePresets = Object.values(workflowPresets).filter(preset => preset.mode === 'workflow' || preset.configured);
+  const availablePresets = Object.values(workflowPresets).filter(preset => preset.configured && preset.mode !== 'workflow');
   select.innerHTML = availablePresets.map(preset => {
     const channel = ['ai_app','dynamic_ai_app'].includes(preset.mode) ? ' · RunningHub AI 实例' : '';
     return `<option value="${escapeHtml(preset.id)}">${escapeHtml(preset.name)}${escapeHtml(channel)}</option>`;
@@ -619,6 +630,13 @@ document.addEventListener('click', event => {
     setTimeout(() => (!document.querySelector('#rh-workflow-id').value ? document.querySelector('#rh-workflow-id') : document.querySelector('#rh-prompt-node')).focus(), 350);
   }
   if (event.target.closest('[data-submit-runninghub]')) submitRunningHub();
+  const remove = event.target.closest('[data-remove-job]');
+  if (remove) {
+    const id = decodeURIComponent(remove.dataset.removeJob);
+    const provider = remove.dataset.provider;
+    localStorage.setItem(jobHistoryKey(), JSON.stringify(getJobHistory().filter(job => !(job.id === id && job.provider === provider))));
+    renderJobHistory();
+  }
   const resume = event.target.closest('[data-resume-job]');
   if (resume) resumeJob(decodeURIComponent(resume.dataset.resumeJob), resume.dataset.provider, resume);
 });
@@ -670,6 +688,9 @@ dialog.addEventListener('submit', async event => {
   button.disabled = true;
   try {
     if (!apiKey || apiKey.length < 12) throw new Error('API Key 格式无效');
+    if (form.dataset.provider === 'seedance' && /^apikey-/i.test(apiKey)) {
+      throw new Error('这里应填写 API Key 列中的真实密钥，不是 apikey- 开头的资源 ID');
+    }
     const connection = {api_key:apiKey, region:formData.get('region') || 'cn', model_id:formData.get('model_id') || ''};
     if (form.dataset.provider === 'seedance') {
       button.textContent = '验证中';
@@ -759,7 +780,7 @@ async function submitRunningHub() {
     saveJob(result.job);
     pollJob(result.job.id, providerId);
   } catch (error) {
-    status.innerHTML = `<strong>提交失败</strong><span>${escapeHtml(error.message)}</span>`;
+    status.innerHTML = `<strong>提交失败</strong><span>${escapeHtml(friendlyJobError(error.message))}</span>`;
     action.disabled = false;
   }
 }
@@ -772,7 +793,7 @@ function showJob(job) {
   const detail = job.provider === 'runninghub'
     ? `${escapeHtml(presetName)} · RunningHub · ${job.generation_mode === 'standard_model' ? '多模态标准模型' : ['ai_app','dynamic_ai_app'].includes(job.generation_mode) ? 'AI 实例' : '自定义工作流'}`
     : `${job.provider === 'seedance' ? `Seedance · 火山方舟 · ${escapeHtml(presetName)}` : 'MiniMax H3'} · ${job.duration || '-'} 秒 · ${job.ratio || '-'} · ${job.input_mode === 'first_frame' ? '首帧引导' : '文本直出'}`;
-  status.innerHTML = `<strong>${labels[job.status] || escapeHtml(job.status)}</strong><span>${job.error ? escapeHtml(job.error) : detail}</span>`;
+  status.innerHTML = `<strong>${labels[job.status] || escapeHtml(job.status)}</strong><span>${job.error ? escapeHtml(friendlyJobError(job.error)) : detail}</span>`;
   saveJob(job);
   if (['succeeded','failed','cancelled','expired'].includes(job.status)) {
     const submit = document.querySelector('[data-submit-runninghub]');
@@ -805,7 +826,7 @@ function pollJob(jobId, provider, trigger = null) {
       activePolls.delete(pollKey);
       if (trigger) trigger.disabled = false;
       const target = document.querySelector('#video-job-status');
-      if (target) target.innerHTML = `<strong>查询暂停</strong><span>${escapeHtml(error.message)}，任务记录仍保留，可稍后恢复。</span>`;
+      if (target) target.innerHTML = `<strong>查询暂停</strong><span>${escapeHtml(friendlyJobError(error.message))}</span>`;
     }
     attempts += 1;
     if (attempts >= 180 && activePolls.has(pollKey)) {

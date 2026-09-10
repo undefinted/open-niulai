@@ -4,6 +4,7 @@ export function seedanceCredentials(request) {
   const apiKey = String(request.headers.get('X-Provider-Key') || '').trim();
   const model = String(request.headers.get('X-Provider-Model') || '').trim();
   if (apiKey.length < 12) throw new Error('请先连接有效的火山方舟 API Key。');
+  if (/^apikey-/i.test(apiKey)) throw new Error('你填写的是 apikey- 开头的资源 ID，不是 API Key。请在火山方舟“API Key”列点击眼睛图标查看并复制真实密钥。');
   if (!/^[A-Za-z0-9_.:-]{6,120}$/.test(model)) throw new Error('请填写已开通的 Seedance 模型 ID 或推理接入点 ID。');
   return {apiKey, model};
 }
@@ -30,6 +31,9 @@ export async function seedanceRequest(method, path, apiKey, body = undefined) {
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = result.error?.message || result.message || result.error || '请求失败';
+    if (response.status === 401 && /format is incorrect/i.test(String(message))) {
+      throw new Error('火山方舟 API Key 格式错误：请复制“API Key”列中的真实密钥，不要复制 apikey- 开头的资源 ID。');
+    }
     throw new Error(`火山方舟 HTTP ${response.status}：${message}`);
   }
   return result;

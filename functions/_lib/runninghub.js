@@ -307,6 +307,7 @@ export async function runningHubJson(path, apiKey, body) {
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`RunningHub HTTP ${response.status}：${result.msg || '请求失败'}`);
+  if (result.code === 805) throw new Error('RunningHub 805：当前 API Key 与创建该任务的 Key 不一致。旧任务不能用新 Key 查询，请直接新建实例任务。');
   if (result.code !== 0) throw new Error(`RunningHub ${result.code ?? '错误'}：${result.msg || '请求失败'}`);
   return result.data;
 }

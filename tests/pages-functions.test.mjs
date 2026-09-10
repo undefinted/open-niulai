@@ -11,6 +11,7 @@ import { adaptDiscoveredNodeInfo, aiAppCatalog, buildAiAppNodeInfo, buildNodeInf
 import { assertPaidRuntime, consumeRateLimit, ensureSession, getSession, validateIdempotencyKey } from '../functions/_lib/session.js';
 import { authenticatedUser, loginUser, registerUser } from '../functions/_lib/auth.js';
 import { onRequestPost as createVideoJob } from '../functions/api/video-jobs/index.js';
+import { onRequestGet as listVideoInstances } from '../functions/api/video-instances.js';
 import { onRequestPost as submitFeedback } from '../functions/api/feedback.js';
 
 async function signInTestUser(env, url = 'http://127.0.0.1/api/session') {
@@ -135,6 +136,15 @@ test('Seedance connection verification checks the key and selected model without
   } finally { globalThis.fetch = originalFetch; }
 });
 
+test('Seedance rejects a copied API resource ID before any paid request', async () => {
+  await assert.rejects(
+    verifySeedanceConnection(new Request('https://example.com', {headers:{
+      'X-Provider-Key':'apikey-20260910200721-c67qt', 'X-Provider-Model':'doubao-seedance-1-5-pro-251215',
+    }})),
+    /资源 ID，不是 API Key/,
+  );
+});
+
 test('RunningHub maps prompt and uploaded first frame to workflow nodes', () => {
   assert.deepEqual(buildNodeInfo({
     prompt: 'An awkward cat walks.', prompt_node_id: '6', prompt_field: 'text',
@@ -228,7 +238,7 @@ test('Creator UI defaults to RunningHub AI instances and keeps workflows advance
   assert.doesNotMatch(source, /id="video-provider"/);
   assert.doesNotMatch(source, /data-submit-video/);
   assert.match(source, /class="history-error"/);
-  assert.match(source, /重新查询状态/);
+  assert.match(source, /移除失败记录/);
 });
 
 test('RunningHub AI app catalog hides WebApp and node mappings from browsers', () => {
@@ -246,6 +256,16 @@ test('RunningHub AI app catalog hides WebApp and node mappings from browsers', (
   assert.equal(publicInstance.webapp_id, undefined);
   assert.equal(publicInstance.prompt_node_id, undefined);
   assert.equal(publicInstance.configured, true);
+});
+
+test('public video catalog exposes AI app instances but not custom workflows or stale static mappings', async () => {
+  const response = listVideoInstances({env:{RUNNINGHUB_AI_APPS:JSON.stringify([{
+    id:'minimax-h3', name:'Stale Wan workflow', webappId:'123456789', promptNodeId:'6', verified:true,
+  }])}});
+  const result = await response.json();
+  assert.deepEqual(result.instances.map(item => item.id), ['rh-seedance-25-text', 'rh-seedance-15-frames']);
+  assert.ok(result.instances.every(item => item.mode === 'dynamic_ai_app'));
+  assert.ok(result.instances.every(item => item.webapp_id === undefined));
 });
 
 test('signed anonymous sessions survive valid cookies and reject tampering', async () => {

@@ -160,7 +160,7 @@ test('Creator UI defaults to RunningHub AI instances and keeps workflows advance
   const source = readFileSync(new URL('../web/app.js', import.meta.url), 'utf8');
   assert.match(source, /MiniMax H3 成片实例/);
   assert.match(source, /Seedance 成片实例/);
-  assert.match(source, /确认或修改最终视频脚本/);
+  assert.match(source, /确认或修改最终视频提示词/);
   assert.match(source, /generation_mode:customMode \? 'workflow' : 'ai_app'/);
   assert.match(source, /高级：使用自定义工作流/);
   assert.doesNotMatch(source, /id="video-provider"/);
@@ -231,12 +231,14 @@ test('public UI includes recovery history and legal disclosures', () => {
   assert.match(html, /AI 智能生成 3 版/);
   assert.match(html, /name="script_provider" value="qwen"/);
   assert.match(html, /name="script_provider" value="deepseek"/);
+  assert.match(html, /data-subject="猫" data-template="ad_hook" data-tone="workplace"/);
+  assert.match(html, /data-line="最后改一次" data-duration="10"/);
   assert.match(source, /Idempotency-Key/);
   assert.match(source, /open-niulai:video-jobs/);
   assert.match(source, /open-niulai:creator-draft/);
   assert.match(source, /generation-readiness/);
   assert.match(source, /data-use-style-reference/);
-  assert.match(source, /内置原创低模参考图/);
+  assert.match(source, /作为实际首帧使用，会继承人物与构图/);
   assert.match(source, /feedback-form/);
   assert.match(source, /AI 输出质量门禁/);
   assert.match(source, /质量门禁未通过/);
@@ -356,7 +358,14 @@ test('RunningHub H3 style mode submits the built-in reference through the standa
     },
     put: async (key, value) => values.set(key, value),
   };
-  const env = { SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv };
+  const env = {
+    SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv,
+    RUNNINGHUB_AI_APPS:JSON.stringify([{
+      id:'minimax-h3-style', enabled:true, transport:'standard_model',
+      endpoint:'/openapi/v2/minimax/hailuo-h3/multimodal-to-video',
+      referenceAsset:'/style/original-lowpoly-office-reference-v1.png',
+    }]),
+  };
   const originalFetch = globalThis.fetch;
   let providerRequest;
   globalThis.fetch = async (url, options) => {
@@ -379,6 +388,8 @@ test('RunningHub H3 style mode submits the built-in reference through the standa
     assert.deepEqual(providerRequest.body.imageUrls, ['https://myyuanlai.xyz/style/original-lowpoly-office-reference-v1.png']);
     assert.equal(providerRequest.body.duration, '10');
     assert.equal(providerRequest.body.ratio, 'adaptive');
+    assert.match(providerRequest.body.prompt, /use the attached image only as a rendering-style reference/);
+    assert.match(providerRequest.body.prompt, /Do not copy its character/);
   } finally {
     globalThis.fetch = originalFetch;
   }

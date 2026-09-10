@@ -4,7 +4,7 @@ const toast = document.querySelector('#toast');
 let currentPack = null;
 let pendingCreatorPayload = null;
 let providerState = {providers: [], connected: [], secure_context: false};
-let selectedWorkflow = 'minimax-h3-style';
+let selectedWorkflow = 'minimax-h3';
 let firstFrameDataUrl = null;
 let sessionState = null;
 const activePolls = new Map();
@@ -15,7 +15,7 @@ const creatorDraftKey = 'open-niulai:creator-draft';
 const packDraftKey = 'open-niulai:last-pack';
 const currentPackSchema = '0.2.0';
 let workflowPresets = {
-  'minimax-h3-style': {id:'minimax-h3-style', name:'MiniMax H3 · 风格参考生成', badge:'风格优先', description:'自动附带原创粗粝低模参考图。', supports_image:true, configured:true, mode:'standard_model', uses_builtin_style_reference:true},
+  'minimax-h3-style': {id:'minimax-h3-style', name:'MiniMax H3 · 风格参考生成', badge:'风格优先', description:'仅企业共享 API Key 可调用。', supports_image:true, configured:false, mode:'standard_model', uses_builtin_style_reference:true, availability_reason:'消费级 Key 不可用'},
   'minimax-h3': {id:'minimax-h3', name:'MiniMax H3 成片实例', badge:'快速出片', description:'适合文本直出、首帧引导和带声音的短片。', supports_image:true, configured:false, mode:'ai_app'},
   'seedance': {id:'seedance', name:'Seedance 成片实例', badge:'高质量', description:'适合强调镜头表现、角色一致性和参考素材的视频。', supports_image:true, configured:false, mode:'ai_app'},
   'custom': {id:'custom', name:'自定义工作流', badge:'专业模式', description:'高级用户可以运行自己在 RunningHub 中保存的工作流。', supports_image:true, configured:true, mode:'workflow'},
@@ -144,7 +144,7 @@ function render(pack, {scroll = true} = {}) {
     <article class="prompt-card">${copyButton(text)}<span>图像提示词</span><h3>${visualLabels[key] || key}</h3><p>${escapeHtml(text)}</p></article>`).join('')}</div>`;
 
   const shot = pack.video_shots[0];
-  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 脚本已就绪</span><h3 id="generation-title">确认脚本，直接生成视频</h3><p id="generation-account-note">选择已经调试好的 RunningHub AI 实例，系统会自动填入脚本和素材。</p></div><div class="frame-source"><label class="frame-upload"><span>第 2 步 · 画面来源</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">上传粗粝低模首帧 · 推荐</b><small>参考图尽量使用单一主角、简单背景、低多边形造型；照片会让模型更倾向写实。</small></label><button class="style-reference" type="button" data-use-style-reference><img src="${escapeHtml(pack.style_profile?.reference_asset || '/style/original-lowpoly-office-reference-v1.png')}" alt="原创粗粝低模参考图"><span>使用内置原创参考图</span></button></div><label class="model-select"><span>第 3 步 · AI 实例</span><select id="video-generator" aria-label="选择 RunningHub AI 实例"></select></label><div id="generation-action"></div><label class="script-review"><span>确认或修改最终视频脚本</span><textarea id="video-script-prompt" maxlength="7000">${escapeHtml(shot.motion_prompt)}</textarea><small>这里是经过风格编译的模型提示词。故事内容以“故事”页中的中文脚本为准。</small></label><div id="workflow-summary" class="workflow-summary"></div><ol id="generation-readiness" class="generation-readiness" aria-label="生成准备状态"></ol><details id="workflow-config" class="workflow-config hidden"><summary>高级：使用自定义工作流</summary><div class="advanced-workflow"><div><span class="provider-badge">专业模式</span><h4 id="workflow-config-title">绑定 RunningHub 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="从 RunningHub API 调用页复制"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选，不保存）<input id="rh-access-password" type="password" autocomplete="off"></label><p>仅自定义工作流需要这些信息。AI 实例的 WebAppId 和参数映射由平台后台维护，不会显示给普通用户。</p></div></details><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>脚本与画面分层</strong><span>千问或 DeepSeek 负责故事多样性；Open NiuLai 固定风格和分镜约束；RunningHub AI 实例负责生成视频。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
+  document.querySelector('#tab-video').innerHTML = `<section class="generation-studio" aria-labelledby="generation-title"><div class="generation-copy"><span class="provider-badge">第 1 步 · 脚本已就绪</span><h3 id="generation-title">确认脚本，直接生成视频</h3><p id="generation-account-note">选择已经调试好的 RunningHub AI 实例，系统会自动填入脚本和素材。</p></div><div class="frame-source"><label class="frame-upload"><span>第 2 步 · 画面控制</span><input id="first-frame" type="file" accept="image/png,image/jpeg,image/webp"><b id="frame-name">上传实际首帧</b><small>首帧模式会从这张图开始生成，并继承人物、构图与场景；写实照片会继续生成写实画面。</small></label><button class="style-reference" type="button" data-use-style-reference><img src="${escapeHtml(pack.style_profile?.reference_asset || '/style/original-lowpoly-office-reference-v1.png')}" alt="原创粗粝低模参考图"><span>作为实际首帧使用，会继承人物与构图</span></button></div><label class="model-select"><span>第 3 步 · 视频模型</span><select id="video-generator" aria-label="选择 RunningHub 视频模型"></select></label><div id="generation-action"></div><label class="script-review"><span>确认或修改最终视频提示词</span><textarea id="video-script-prompt" maxlength="7000">${escapeHtml(shot.motion_prompt)}</textarea><small>纯文生只能提高风格命中概率；首帧模式会继承图片内容；多模态参考模式可要求只借鉴风格，但仍可能带入部分构图。</small></label><div id="workflow-summary" class="workflow-summary"></div><ol id="generation-readiness" class="generation-readiness" aria-label="生成准备状态"></ol><details id="workflow-config" class="workflow-config hidden"><summary>高级：使用自定义工作流</summary><div class="advanced-workflow"><div><span class="provider-badge">专业模式</span><h4 id="workflow-config-title">绑定 RunningHub 工作流</h4></div><label>工作流 ID<input id="rh-workflow-id" inputmode="numeric" placeholder="从 RunningHub API 调用页复制"></label><label>提示词节点 ID<input id="rh-prompt-node" placeholder="例如 6"></label><label>提示词字段<input id="rh-prompt-field" value="text"></label><label>图片节点 ID（上传首帧时必填）<input id="rh-image-node" placeholder="例如 12"></label><label>图片字段<input id="rh-image-field" value="image"></label><label>访问密码（可选，不保存）<input id="rh-access-password" type="password" autocomplete="off"></label><p>仅自定义工作流需要这些信息。图片节点通常代表实际首帧，不应当作纯风格参考；具体语义以工作流作者定义为准。</p></div></details><div id="video-job-status" class="job-status hidden" role="status"></div></section><div class="mode-note"><strong>脚本与画面分层</strong><span>千问或 DeepSeek 负责故事多样性；Open NiuLai 固定风格和分镜约束；RunningHub 视频模型负责生成视频。</span></div><div class="video-result"><div class="video-prompt"><pre>${escapeHtml(shot.motion_prompt)}</pre><aside class="video-meta"><dl>
     <div><dt>镜头</dt><dd>${escapeHtml(shot.camera)}</dd></div><div><dt>台词</dt><dd>${escapeHtml(shot.voiceover)}</dd></div><div><dt>避免</dt><dd>${escapeHtml(shot.negative_prompt)}</dd></div>
   </dl></aside></div><div class="result-player"><video controls muted loop playsinline poster="/demo/mao-first-frame.png"><source src="/demo/mao-lai-svd-captioned.mp4" type="video/mp4"></video><p><strong>参考样片</strong><br>当前播放的是本地 SVD 验证样片，不是本次输入即时生成的成片。</p></div></div>`;
   document.querySelector('#tab-video').insertAdjacentHTML('afterbegin', qualityMarkup(pack.quality_report, true));
@@ -276,9 +276,17 @@ document.querySelector('#candidate-list').addEventListener('click', async event 
 });
 
 document.querySelectorAll('[data-example]').forEach(button => button.addEventListener('click', () => {
-  document.querySelector('#prompt').value = button.dataset.example;
-  const match = button.dataset.example.match(/(猫|甲方|代码)来/);
-  if (match) document.querySelector('#subject').value = match[1];
+  const values = {
+    prompt:button.dataset.example, subject:button.dataset.subject, template:button.dataset.template,
+    tone:button.dataset.tone, style_strength:button.dataset.strength,
+    required_line:button.dataset.line, duration:button.dataset.duration,
+  };
+  Object.entries(values).forEach(([name, value]) => {
+    const field = form.elements.namedItem(name);
+    if (field && value) field.value = value;
+  });
+  saveCreatorDraft();
+  notify(`已填入“${button.textContent.trim()}”完整预设`);
 }));
 
 document.querySelector('.tabs').addEventListener('click', event => {
@@ -302,7 +310,7 @@ workspace.addEventListener('click', async event => {
         reader.readAsDataURL(blob);
       });
       document.querySelector('#first-frame').value = '';
-      document.querySelector('#frame-name').textContent = '已选择内置原创低模参考图';
+      document.querySelector('#frame-name').textContent = '已选择内置原创低模图作为实际首帧';
       styleReference.classList.add('selected');
       updateGenerationStudio();
       notify('已使用内置原创参考图');
@@ -452,11 +460,15 @@ function updateGenerationStudio() {
 function updateWorkflowPreset() {
   const select = document.querySelector('#video-generator');
   if (!select) return;
-  select.innerHTML = Object.values(workflowPresets).map(preset => `<option value="${escapeHtml(preset.id)}">${escapeHtml(preset.name)}${preset.mode === 'ai_app' && !preset.configured ? ' · 待配置' : ''}</option>`).join('');
+  select.innerHTML = Object.values(workflowPresets).map(preset => {
+    const unavailable = preset.mode !== 'workflow' && !preset.configured;
+    const suffix = unavailable ? ` · ${preset.availability_reason || '平台尚未接入'}` : '';
+    return `<option value="${escapeHtml(preset.id)}" ${unavailable ? 'disabled' : ''}>${escapeHtml(preset.name)}${escapeHtml(suffix)}</option>`;
+  }).join('');
   select.value = selectedWorkflow;
   const preset = workflowPresets[selectedWorkflow];
   const config = getWorkflowConfig(selectedWorkflow);
-  const availability = preset.mode !== 'workflow' ? (preset.configured ? `可用 · ${preset.estimated_cost}` : '实例尚未由管理员绑定') : '高级模式';
+  const availability = preset.mode !== 'workflow' ? (preset.configured ? `可用 · ${preset.estimated_cost}` : preset.availability_reason || '平台尚未接入') : '高级模式';
   const styleFit = preset.uses_builtin_style_reference ? '风格适配：强制附带原创参考图' : preset.supports_image ? '风格适配：可用首帧锁定' : '风格适配：较弱，仅靠文字可能写实化';
   document.querySelector('#workflow-summary').innerHTML = `<span class="provider-badge">${escapeHtml(preset.badge)}</span><strong>${escapeHtml(preset.name)}</strong><p>${escapeHtml(preset.description)} · ${escapeHtml(styleFit)} · ${escapeHtml(availability)}</p>`;
   document.querySelector('#workflow-config-title').textContent = `绑定 ${preset.name} 工作流`;
@@ -469,6 +481,12 @@ function updateWorkflowPreset() {
   const details = document.querySelector('#workflow-config');
   details.classList.toggle('hidden', preset.mode !== 'workflow');
   details.open = preset.mode === 'workflow' && (!config.workflow_id || !config.prompt_node_id);
+  const referenceButton = document.querySelector('[data-use-style-reference]');
+  const referenceLabel = referenceButton?.querySelector('span');
+  if (referenceButton) referenceButton.disabled = !preset.supports_image || !preset.configured;
+  if (referenceLabel) referenceLabel.textContent = preset.mode === 'standard_model'
+    ? '仅作风格参考，不复制主体'
+    : '作为实际首帧使用，会继承人物与构图';
   updateGenerationStudio();
 }
 
@@ -486,7 +504,7 @@ document.addEventListener('change', event => {
   }
   if (event.target.id === 'first-frame') {
     const file = event.target.files[0];
-    if (!file) { firstFrameDataUrl = null; document.querySelector('#frame-name').textContent = '上传粗粝低模首帧 · 推荐'; updateGenerationStudio(); return; }
+    if (!file) { firstFrameDataUrl = null; document.querySelector('#frame-name').textContent = '上传实际首帧'; updateGenerationStudio(); return; }
     if (file.size > 10 * 1024 * 1024) { notify('首帧图片不能超过 10 MB'); event.target.value = ''; return; }
     const reader = new FileReader();
     reader.onload = () => { firstFrameDataUrl = reader.result; document.querySelector('#frame-name').textContent = `${file.name} · 首帧引导`; updateGenerationStudio(); };

@@ -34,7 +34,8 @@ export async function onRequestPost(context) {
           const duration = Math.max(5, Math.min(15, Number(payload.duration || 10)));
           const referenceUrl = new URL(instance.reference_asset, context.request.url).toString();
           const data = await runningHubV2Json(instance.endpoint, apiKey, {
-            prompt: String(payload.prompt || '').trim(), imageUrls: [referenceUrl], resolution: '2K',
+            prompt: `REFERENCE ROLE: use the attached image only as a rendering-style reference for crude geometry, damaged topology, flat lighting and blurry textures. Do not copy its character, identity, pose, props or room layout. Replace all semantic content with the requested subject and story. ${String(payload.prompt || '').trim()}`,
+            imageUrls: [referenceUrl], resolution: '2K',
             duration: String(duration), ratio: 'adaptive', aigc_watermark: false,
           });
           if (!data?.taskId) throw new Error('RunningHub 标准模型未返回任务 ID，未自动重试以避免重复扣费。');

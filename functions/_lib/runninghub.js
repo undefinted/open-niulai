@@ -24,9 +24,10 @@ function assertNodeId(value, label) {
 const DEFAULT_AI_APPS = [
   {
     id: 'minimax-h3-style', name: 'MiniMax H3 · 风格参考生成', badge: '风格优先',
-    description: '官方多模态标准接口，自动附带本站原创粗粝低模参考图。', supports_image: true,
+    description: 'RunningHub 标准模型接口，仅企业共享 API Key 可调用。', supports_image: true,
     transport: 'standard_model', endpoint: '/openapi/v2/minimax/hailuo-h3/multimodal-to-video',
-    reference_asset: '/style/original-lowpoly-office-reference-v1.png', estimated_cost: '按 RunningHub 标准模型实际用量结算',
+    reference_asset: '/style/original-lowpoly-office-reference-v1.png', estimated_cost: '需企业共享 API Key',
+    availability_reason: '当前消费级 API Key 不可用；RunningHub 会返回 1014。',
   },
   {
     id: 'minimax-h3', name: 'MiniMax H3 成片实例', badge: '快速出片',
@@ -35,6 +36,7 @@ const DEFAULT_AI_APPS = [
   {
     id: 'seedance', name: 'Seedance 成片实例', badge: '高质量',
     description: '适合强调镜头表现、角色一致性和参考素材的视频。', supports_image: true,
+    availability_reason: '尚未绑定通过稳定性验收的 Seedance AI 应用。',
   },
 ];
 
@@ -47,6 +49,7 @@ function cleanInstance(raw, fallback = {}) {
   const transport = String(raw?.transport || fallback.transport || 'ai_app') === 'standard_model' ? 'standard_model' : 'ai_app';
   const endpoint = String(raw?.endpoint || fallback.endpoint || '').trim();
   const referenceAsset = String(raw?.reference_asset || raw?.referenceAsset || fallback.reference_asset || '').trim();
+  const standardEnabled = raw?.enabled === true;
   return {
     id,
     name: String(raw?.name || fallback.name || id).slice(0, 80),
@@ -56,9 +59,10 @@ function cleanInstance(raw, fallback = {}) {
     estimated_cost: String(raw?.estimated_cost || raw?.estimatedCost || '以 RunningHub 提交页为准').slice(0, 80),
     supports_image: raw?.supports_image ?? raw?.supportsImage ?? fallback.supports_image ?? false,
     configured: transport === 'standard_model'
-      ? endpoint === '/openapi/v2/minimax/hailuo-h3/multimodal-to-video' && /^\/[A-Za-z0-9/_.-]+$/.test(referenceAsset)
+      ? standardEnabled && endpoint === '/openapi/v2/minimax/hailuo-h3/multimodal-to-video' && /^\/[A-Za-z0-9/_.-]+$/.test(referenceAsset)
       : /^\d{6,30}$/.test(webappId) && Boolean(promptNodeId),
-    transport, endpoint, reference_asset: referenceAsset,
+    transport, endpoint, reference_asset: referenceAsset, enabled: standardEnabled,
+    availability_reason: String(raw?.availability_reason || raw?.availabilityReason || fallback.availability_reason || '').slice(0, 180),
     api_version: String(raw?.api_version || raw?.apiVersion || 'legacy') === 'v2' ? 'v2' : 'legacy',
     instance_type: ['default', 'plus', 'ultra'].includes(requestedInstanceType) ? requestedInstanceType : 'default',
     webapp_id: webappId,
@@ -96,7 +100,7 @@ export function publicAiApp(instance) {
     image_node_id: _imageNodeId, image_field: _imageField, duration_node_id: _durationNodeId,
     duration_field: _durationField, ratio_node_id: _ratioNodeId, ratio_field: _ratioField,
     fixed_fields: _fixedFields, api_version: _apiVersion, instance_type: _instanceType,
-    endpoint: _endpoint, transport: _transport, reference_asset: _referenceAsset, ...safe } = instance;
+    endpoint: _endpoint, transport: _transport, reference_asset: _referenceAsset, enabled: _enabled, ...safe } = instance;
   return { ...safe, mode: _transport, uses_builtin_style_reference: _transport === 'standard_model' };
 }
 

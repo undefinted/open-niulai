@@ -14,6 +14,7 @@ import { onRequestPost as submitFeedback } from '../functions/api/feedback.js';
 test('Pages pack builder preserves the web contract', () => {
   const pack = createPack({ subject: '猫', prompt: '一只加班的猫试图逃离办公室', duration: 10, template: 'ad_hook' });
   assert.equal(pack.title, '《猫来》');
+  assert.equal(pack.schema_version, '0.2.0');
   assert.equal(pack.constraint_report.duration_seconds, 10);
   assert.equal(pack.script.length, 3);
   assert.match(pack.video_shots[0].motion_prompt, /10-second/);

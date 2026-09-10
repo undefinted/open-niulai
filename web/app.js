@@ -13,6 +13,7 @@ const workflowConfigKey = preset => `open-niulai:runninghub:workflow:${preset}`;
 const jobHistoryKey = 'open-niulai:video-jobs';
 const creatorDraftKey = 'open-niulai:creator-draft';
 const packDraftKey = 'open-niulai:last-pack';
+const currentPackSchema = '0.2.0';
 let workflowPresets = {
   'minimax-h3': {id:'minimax-h3', name:'MiniMax H3 成片实例', badge:'快速出片', description:'适合文本直出、首帧引导和带声音的短片。', supports_image:true, configured:false, mode:'ai_app'},
   'seedance': {id:'seedance', name:'Seedance 成片实例', badge:'高质量', description:'适合强调镜头表现、角色一致性和参考素材的视频。', supports_image:true, configured:false, mode:'ai_app'},
@@ -201,7 +202,8 @@ function restoreCreatorDraft() {
       if (field && typeof value === 'string') field.value = value;
     });
     const pack = JSON.parse(localStorage.getItem(packDraftKey) || 'null');
-    if (pack?.title && Array.isArray(pack.script) && Array.isArray(pack.video_shots)) render(pack, {scroll:false});
+    if (pack?.schema_version === currentPackSchema && pack?.title && Array.isArray(pack.script) && Array.isArray(pack.video_shots)) render(pack, {scroll:false});
+    else if (pack) localStorage.removeItem(packDraftKey);
   } catch {
     localStorage.removeItem(creatorDraftKey);
     localStorage.removeItem(packDraftKey);

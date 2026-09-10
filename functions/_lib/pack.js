@@ -97,7 +97,7 @@ export function createPack(payload) {
     editing_notes: 'Add exact Chinese titles and subtitles in editing; cut on the broken reveal frame.',
   };
   return {
-    schema_version: '0.1.0', title,
+    schema_version: '0.2.0', title,
     source: { subject, prompt, tone: String(payload.tone || 'meme'), template, style_strength: styleStrength, script_provider: String(payload.script_provider || (draft ? 'ai' : 'local')), duration, required_line: payload.required_line || null, platform: payload.platform || '通用短视频', language: 'zh-CN' },
     constraint_report: { subject, creative_prompt: prompt, required_line: line, duration_seconds: duration, platform: payload.platform || '通用短视频', language: 'zh-CN' },
     hook: String(draft?.hook || `${subject}以最真诚、最不协调的方式，试图${missionZh}。`).trim().slice(0, 220), character_bible: character, world, world_zh: worldZh, script,

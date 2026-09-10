@@ -50,6 +50,8 @@ function cleanInstance(raw, fallback = {}) {
   const endpoint = String(raw?.endpoint || fallback.endpoint || '').trim();
   const referenceAsset = String(raw?.reference_asset || raw?.referenceAsset || fallback.reference_asset || '').trim();
   const standardEnabled = raw?.enabled === true;
+  const verified = raw?.verified === true;
+  const aiAppMapped = /^\d{6,30}$/.test(webappId) && Boolean(promptNodeId);
   return {
     id,
     name: String(raw?.name || fallback.name || id).slice(0, 80),
@@ -60,9 +62,9 @@ function cleanInstance(raw, fallback = {}) {
     supports_image: raw?.supports_image ?? raw?.supportsImage ?? fallback.supports_image ?? false,
     configured: transport === 'standard_model'
       ? standardEnabled && endpoint === '/openapi/v2/minimax/hailuo-h3/multimodal-to-video' && /^\/[A-Za-z0-9/_.-]+$/.test(referenceAsset)
-      : /^\d{6,30}$/.test(webappId) && Boolean(promptNodeId),
-    transport, endpoint, reference_asset: referenceAsset, enabled: standardEnabled,
-    availability_reason: String(raw?.availability_reason || raw?.availabilityReason || fallback.availability_reason || '').slice(0, 180),
+      : aiAppMapped && verified,
+    transport, endpoint, reference_asset: referenceAsset, enabled: standardEnabled, verified,
+    availability_reason: String(raw?.availability_reason || raw?.availabilityReason || (aiAppMapped && !verified ? '已绑定，但尚未通过真实成片验收。' : fallback.availability_reason) || '').slice(0, 180),
     api_version: String(raw?.api_version || raw?.apiVersion || 'legacy') === 'v2' ? 'v2' : 'legacy',
     instance_type: ['default', 'plus', 'ultra'].includes(requestedInstanceType) ? requestedInstanceType : 'default',
     webapp_id: webappId,
@@ -100,7 +102,8 @@ export function publicAiApp(instance) {
     image_node_id: _imageNodeId, image_field: _imageField, duration_node_id: _durationNodeId,
     duration_field: _durationField, ratio_node_id: _ratioNodeId, ratio_field: _ratioField,
     fixed_fields: _fixedFields, api_version: _apiVersion, instance_type: _instanceType,
-    endpoint: _endpoint, transport: _transport, reference_asset: _referenceAsset, enabled: _enabled, ...safe } = instance;
+    endpoint: _endpoint, transport: _transport, reference_asset: _referenceAsset, enabled: _enabled,
+    verified: _verified, ...safe } = instance;
   return { ...safe, mode: _transport, uses_builtin_style_reference: _transport === 'standard_model' };
 }
 

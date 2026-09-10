@@ -35,6 +35,7 @@ Set `RUNNINGHUB_AI_APPS` as an encrypted Pages secret containing the administrat
     "name": "MiniMax H3 成片实例",
     "badge": "快速出片",
     "description": "适合文本直出和首帧引导的短片",
+    "verified": true,
     "apiVersion": "v2",
     "webappId": "123456789",
     "promptNodeId": "6",
@@ -47,7 +48,7 @@ Set `RUNNINGHUB_AI_APPS` as an encrypted Pages secret containing the administrat
 ]
 ```
 
-Optional `durationNodeId`/`durationField` and `ratioNodeId`/`ratioField` mappings pass duration and ratio when the selected AI application exposes those inputs. Never commit the real catalog when its instance mapping should remain private.
+Only set `verified` to `true` after the exact mapping has produced and returned a real video in acceptance testing. Unverified AI applications remain hidden from the creator. Optional `durationNodeId`/`durationField` and `ratioNodeId`/`ratioField` mappings pass duration and ratio when the selected AI application exposes those inputs. Never commit the real catalog when its instance mapping should remain private.
 
 For current RunningHub V2 AI applications, set `apiVersion` to `v2`. The server calls `/openapi/v2/run/ai-app/{webappId}` and queries `/openapi/v2/query`. Use `fixedFields` for public application inputs such as resolution, audio, bitrate, and output format that should have product-controlled defaults.
 

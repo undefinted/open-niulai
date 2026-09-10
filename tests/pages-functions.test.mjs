@@ -206,7 +206,7 @@ test('Creator UI defaults to RunningHub AI instances and keeps workflows advance
 
 test('RunningHub AI app catalog hides WebApp and node mappings from browsers', () => {
   const env = { RUNNINGHUB_AI_APPS: JSON.stringify([{
-    id:'minimax-h3', name:'H3 instance', webappId:'123456789', promptNodeId:'6', promptField:'text',
+    id:'minimax-h3', name:'H3 instance', webappId:'123456789', promptNodeId:'6', promptField:'text', verified:true,
     imageNodeId:'12', imageField:'image', supportsImage:true,
   }]) };
   const instance = aiAppCatalog(env).find(item => item.id === 'minimax-h3');
@@ -379,7 +379,7 @@ test('RunningHub AI instance submits its hidden WebApp mapping', async () => {
   const env = {
     SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv, USERS:kv,
     RUNNINGHUB_AI_APPS:JSON.stringify([{
-      id:'minimax-h3', name:'MiniMax H3 成片实例', webappId:'123456789', promptNodeId:'6', promptField:'text',
+      id:'minimax-h3', name:'MiniMax H3 成片实例', webappId:'123456789', promptNodeId:'6', promptField:'text', verified:true,
     }]),
   };
   const auth = await signInTestUser(env);
@@ -536,7 +536,7 @@ test('RunningHub V2 AI instance uses the instance path and direct response contr
   const env = {
     SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv, USERS:kv,
     RUNNINGHUB_AI_APPS:JSON.stringify([{
-      id:'seedance', name:'Seedance 2.5 文生视频', apiVersion:'v2', webappId:'2085880920086765569',
+      id:'seedance', name:'Seedance 2.5 文生视频', apiVersion:'v2', webappId:'2085880920086765569', verified:true,
       instanceType:'plus',
       promptNodeId:'1', promptField:'prompt', durationNodeId:'1', durationField:'duration',
       ratioNodeId:'1', ratioField:'ratio', fixedFields:[

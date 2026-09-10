@@ -1,6 +1,7 @@
 import { errorResponse, json, readJson } from '../../_lib/http.js';
 import { buildPayload, credentials, minimaxRequest } from '../../_lib/minimax.js';
 import { buildAiAppNodeInfo, buildNodeInfo, getAiApp, runningHubJson, runningHubV2Json } from '../../_lib/runninghub.js';
+import { buildSeedancePayload, seedanceCredentials, seedanceRequest } from '../../_lib/seedance.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, publicJob, validateIdempotencyKey } from '../../_lib/session.js';
 import { requireUser } from '../../_lib/auth.js';
 
@@ -86,7 +87,21 @@ export async function onRequestPost(context) {
       await saveJob(context.env, job);
       return json({ job: publicJob(job), replayed: false }, 202, responseHeaders);
     }
-    if (payload.provider !== 'minimax') return json({ error: '当前站内真实生成支持 RunningHub AI 实例、自定义工作流和 MiniMax H3 兼容接口。' }, 501);
+    if (payload.provider === 'seedance') {
+      const {apiKey:seedanceKey, model} = seedanceCredentials(context.request);
+      const duration = Number(payload.duration) <= 5 ? 5 : 10;
+      const requestBody = buildSeedancePayload(payload.prompt, model, duration, String(payload.ratio || '16:9'), payload.first_frame_image || null);
+      const result = await seedanceRequest('POST', '/contents/generations/tasks', seedanceKey, requestBody);
+      if (!result.id) throw new Error('火山方舟响应未返回任务 ID，未自动重试以避免重复扣费。');
+      const job = {
+        id:String(result.id), provider:'seedance', model, status:String(result.status || 'queued').toLowerCase(), duration,
+        ratio:String(payload.ratio || '16:9'), input_mode:payload.first_frame_image ? 'first_frame' : 'text', created_at:Math.floor(Date.now() / 1000),
+        owner:user.id, idempotency_key:idempotencyKey,
+      };
+      await saveJob(context.env, job);
+      return json({job:publicJob(job), replayed:false}, 202, responseHeaders);
+    }
+    if (payload.provider !== 'minimax') return json({ error: '当前站内真实生成支持 RunningHub、MiniMax H3 官方 API 和 Seedance 火山方舟 API。' }, 501);
     const duration = Math.max(4, Math.min(15, Number(payload.duration || 10)));
     const requestBody = buildPayload(payload.prompt, duration, String(payload.ratio || '16:9'), payload.first_frame_image || null);
     const result = await minimaxRequest('POST', '/v2/video_generation', apiKey, region, requestBody);

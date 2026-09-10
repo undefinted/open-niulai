@@ -224,6 +224,7 @@ dialog::backdrop { background: rgba(23,25,28,.58); }
 .provider-row p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
 .provider-badge { color: var(--coral-dark); font-size: 10px; font-weight: 850; }
 .key-form { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 7px; }
+.key-form.seedance-key-form { grid-template-columns: minmax(150px,1fr) minmax(220px,1fr) auto; }
 .key-form input, .key-form select { min-width: 0; height: 42px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: white; }
 .action-link { display: grid; place-items: center; color: inherit; text-decoration: none; font-size: 13px; }
 .proof { padding-top: 54px; padding-bottom: 70px; border-top: 1px solid var(--line); }
@@ -289,7 +290,7 @@ footer nav { display: flex; flex-wrap: wrap; gap: 18px; }
   .primary { justify-content: space-between; }
   .tabs { overflow-x: auto; }
   .provider-row { grid-template-columns: 1fr; }
-  .key-form { grid-template-columns: 1fr; }
+  .key-form, .key-form.seedance-key-form { grid-template-columns: 1fr; }
   .account-form { grid-template-columns: 1fr; }
   .generation-bar { align-items: stretch; flex-direction: column; }
   .advanced-workflow { grid-template-columns: 1fr; }

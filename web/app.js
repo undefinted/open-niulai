@@ -30,7 +30,7 @@ function getConnection(provider) {
 
 function providerHeaders(provider) {
   const connection = getConnection(provider);
-  return connection ? {'X-Provider-Key': connection.api_key, 'X-Provider-Region': connection.region || 'cn'} : {};
+  return connection ? {'X-Provider-Key': connection.api_key, 'X-Provider-Region': connection.region || 'cn', ...(connection.model_id ? {'X-Provider-Model':connection.model_id} : {})} : {};
 }
 
 function scriptProviderHeaders(provider) {
@@ -466,9 +466,9 @@ async function loadProviders() {
     const badge = connected ? '已临时连接' : !providerState.secure_context ? 'HTTPS 后可连接' : !connectionReady ? '服务配置中' : 'API Key';
     let action = '';
     if (connected) action = `<button type="button" class="secondary" data-disconnect="${item.id}">断开</button>`;
-    else if (item.connection === 'api_key' && connectionReady) action = `<form class="key-form" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="${escapeHtml(item.name)} API Key">${item.id === 'minimax' ? '<select name="region" aria-label="MiniMax API 区域"><option value="cn">中国站</option><option value="global">国际站</option></select>' : ''}<button class="secondary" type="submit">连接</button></form>`;
+    else if (item.connection === 'api_key' && connectionReady) action = `<form class="key-form ${item.id === 'seedance' ? 'seedance-key-form' : ''}" data-provider="${item.id}"><input name="api_key" type="password" autocomplete="off" required minlength="12" placeholder="${escapeHtml(item.name)} API Key">${item.id === 'minimax' ? '<select name="region" aria-label="MiniMax API 区域"><option value="cn">中国站</option><option value="global">国际站</option></select>' : ''}${item.id === 'seedance' ? '<input name="model_id" required minlength="6" placeholder="Seedance 模型 ID / 接入点 ID" value="doubao-seedance-1-0-lite-t2v-250428">' : ''}<button class="secondary" type="submit">连接</button></form>`;
     else if (item.account_url) action = `<a class="secondary action-link" href="${item.account_url}" target="_blank" rel="noreferrer">前往平台 ↗</a>`;
-    const purpose = item.capability === 'script' ? '用于生成三个不同脚本候选，不参与视频扣费。' : item.id === 'minimax' ? '直接调用 MiniMax 官方 H3 API，费用从你的 MiniMax 账户扣除。' : item.id === 'seedance' ? '官方火山方舟通道需要 API Key 和视频模型接入点，完成适配后开放。' : '用于提交视频生成任务，费用从你的 RunningHub 账户扣除。';
+    const purpose = item.capability === 'script' ? '用于生成三个不同脚本候选，不参与视频扣费。' : item.id === 'minimax' ? '直接调用 MiniMax 官方 H3 API，费用从你的 MiniMax 账户扣除。' : item.id === 'seedance' ? '直接调用火山方舟视频生成 API，需要 API Key 和已开通的 Seedance 模型 ID。' : '用于提交视频生成任务，费用从你的 RunningHub 账户扣除。';
     return `<article class="provider-row"><div><span class="provider-badge">${badge}</span><h3>${escapeHtml(item.name)}</h3><p>${purpose} 凭证不写入磁盘。</p></div>${action}</article>`;
   }).join('');
   updateGenerationStudio();
@@ -481,7 +481,7 @@ async function loadVideoInstances() {
   const custom = workflowPresets.custom;
   workflowPresets = Object.fromEntries(result.instances.map(instance => [instance.id, {...instance, mode:instance.mode || 'ai_app'}]));
   workflowPresets['official-minimax-h3'] = {id:'official-minimax-h3', name:'MiniMax H3 · 官方 API', badge:'官方直连', description:'直接调用 MiniMax 官方多模态视频 API，不经过 RunningHub。', supports_image:true, configured:true, mode:'official_api', provider:'minimax', estimated_cost:'按 MiniMax 官方账户实际用量结算'};
-  workflowPresets['official-seedance'] = {id:'official-seedance', name:'Seedance · 火山方舟官方 API', badge:'官方直连', description:'需要火山方舟 API Key 与视频模型接入点。', supports_image:true, configured:false, mode:'official_api', provider:'seedance', availability_reason:'等待配置火山方舟视频模型接入点'};
+  workflowPresets['official-seedance'] = {id:'official-seedance', name:'Seedance · 火山方舟官方 API', badge:'官方直连', description:'直接调用火山方舟视频生成 API，不经过 RunningHub。', supports_image:true, configured:true, mode:'official_api', provider:'seedance', estimated_cost:'按火山方舟账户实际用量结算'};
   workflowPresets.custom = custom;
   if (!workflowPresets[selectedWorkflow]) selectedWorkflow = Object.keys(workflowPresets)[0] || 'custom';
 }
@@ -524,7 +524,7 @@ function updateGenerationStudio() {
   const styleMode = standardStyleMode ? '风格优先：自动使用原创低模参考图' : firstFrameDataUrl && preset.supports_image ? '风格优先：首帧会锁定造型' : '仅靠文字：画风可能被模型自动美化';
   note.textContent = customMode
     ? `${preset.name} 将使用你的节点配置运行。${firstFrameDataUrl ? '已提供首帧，请确认图片节点有效。' : '未提供首帧，画风不稳定。'}`
-    : `${preset.name} · ${styleMode}。费用从${providerId === 'minimax' ? ' MiniMax 官方' : ' RunningHub'}账户扣除。`;
+    : `${preset.name} · ${styleMode}。费用从${providerId === 'minimax' ? ' MiniMax 官方' : providerId === 'seedance' ? '火山方舟' : ' RunningHub'}账户扣除。`;
   const checks = [
     {done:qualityReady, label:'质量门禁', detail:qualityReady ? `规则验证 ${currentPack.quality_report.score}/100` : '请重新生成并修正失败项'},
     {done:scriptReady, label:'视频脚本', detail:scriptReady ? '已确认，可继续修改' : '请填写最终视频脚本'},
@@ -666,7 +666,7 @@ dialog.addEventListener('submit', async event => {
   form.querySelector('button').disabled = true;
   try {
     if (!apiKey || apiKey.length < 12) throw new Error('API Key 格式无效');
-    sessionStorage.setItem(connectionKey(form.dataset.provider), JSON.stringify({api_key:apiKey, region:formData.get('region') || 'cn'}));
+    sessionStorage.setItem(connectionKey(form.dataset.provider), JSON.stringify({api_key:apiKey, region:formData.get('region') || 'cn', model_id:formData.get('model_id') || ''}));
     form.reset();
     await loadProviders();
     notify('模型账户已连接，仅保留在当前标签页');
@@ -688,7 +688,7 @@ async function submitRunningHub() {
   if (currentPack.quality_report?.status !== 'passed') { notify('质量门禁未通过，请重新生成并检查失败项'); return; }
   const preset = workflowPresets[selectedWorkflow];
   const providerId = preset.provider || 'runninghub';
-  const providerLabel = providerId === 'minimax' ? 'MiniMax 官方' : 'RunningHub';
+  const providerLabel = providerId === 'minimax' ? 'MiniMax 官方' : providerId === 'seedance' ? '火山方舟' : 'RunningHub';
   const customMode = preset.mode === 'workflow';
   const standardStyleMode = preset.mode === 'standard_model';
   const workflowId = document.querySelector('#rh-workflow-id').value.trim();
@@ -730,7 +730,7 @@ async function submitRunningHub() {
         duration:currentPack.constraint_report?.duration_seconds, ratio:'16:9',
         prompt_node_id:promptNodeId, prompt_field:document.querySelector('#rh-prompt-field').value.trim() || 'text',
         image_node_id:imageNodeId, image_field:document.querySelector('#rh-image-field').value.trim() || 'image',
-        uploaded_file_name:uploadedFileName, first_frame_image:providerId === 'minimax' ? firstFrameDataUrl : undefined,
+        uploaded_file_name:uploadedFileName, first_frame_image:['minimax','seedance'].includes(providerId) ? firstFrameDataUrl : undefined,
         access_password:customMode ? document.querySelector('#rh-access-password').value : undefined,
       }),
     });
@@ -752,7 +752,7 @@ function showJob(job) {
   const presetName = job.model || workflowPresets[job.workflow_preset || selectedWorkflow]?.name || 'RunningHub 任务';
   const detail = job.provider === 'runninghub'
     ? `${escapeHtml(presetName)} · RunningHub · ${job.generation_mode === 'standard_model' ? '多模态标准模型' : job.generation_mode === 'ai_app' ? 'AI 实例' : '自定义工作流'}`
-    : `MiniMax H3 · ${job.duration || '-'} 秒 · ${job.ratio || '-'} · ${job.input_mode === 'first_frame' ? '首帧引导' : '文本直出'}`;
+    : `${job.provider === 'seedance' ? `Seedance · 火山方舟 · ${escapeHtml(presetName)}` : 'MiniMax H3'} · ${job.duration || '-'} 秒 · ${job.ratio || '-'} · ${job.input_mode === 'first_frame' ? '首帧引导' : '文本直出'}`;
   status.innerHTML = `<strong>${labels[job.status] || escapeHtml(job.status)}</strong><span>${job.error ? escapeHtml(job.error) : detail}</span>`;
   saveJob(job);
   if (['succeeded','failed','cancelled','expired'].includes(job.status)) {
@@ -760,7 +760,7 @@ function showJob(job) {
     if (submit) submit.disabled = false;
   }
   if (job.video_url) {
-    const providerName = job.provider === 'runninghub' ? 'RunningHub' : 'MiniMax';
+    const providerName = job.provider === 'runninghub' ? 'RunningHub' : job.provider === 'seedance' ? 'Seedance · 火山方舟' : 'MiniMax';
     document.querySelector('.result-player').innerHTML = `<video controls autoplay playsinline><source src="${escapeHtml(job.video_url)}" type="video/mp4"></video><div class="result-details"><p><strong>本次生成结果</strong><br>${providerName} 已返回真实生成结果，可直接播放或下载。</p><a class="secondary action-link" href="${escapeHtml(job.video_url)}" target="_blank" rel="noreferrer">下载或打开成片</a><form class="feedback-form" data-job-id="${encodeURIComponent(job.id)}" data-provider="${escapeHtml(job.provider)}"><fieldset><legend>这支成片满意吗？</legend><div class="rating-options">${[1,2,3,4,5].map(value => `<label><input type="radio" name="rating" value="${value}" ${value === 4 ? 'checked' : ''}><span>${value}</span></label>`).join('')}</div></fieldset><label>主要问题<select name="reason"><option value="satisfied">整体满意</option><option value="prompt_fit">与创意不符</option><option value="quality">画面质量</option><option value="consistency">角色不一致</option><option value="speed">生成太慢</option><option value="other">其他</option></select></label><label>补充说明<input name="comment" maxlength="300" placeholder="可选，请勿填写联系方式"></label><button class="secondary" type="submit">提交评价</button></form></div>`;
   }
 }
@@ -803,7 +803,8 @@ function pollJob(jobId, provider, trigger = null) {
 
 function resumeJob(jobId, provider, trigger) {
   if (!getConnection(provider)) {
-    notify(`请先重新连接${provider === 'minimax' ? ' MiniMax' : ' RunningHub'}，API Key 不会跨标签页保存`);
+    const providerName = provider === 'minimax' ? ' MiniMax' : provider === 'seedance' ? ' Seedance · 火山方舟' : ' RunningHub';
+    notify(`请先重新连接${providerName}，API Key 不会跨标签页保存`);
     openConnections();
     return;
   }

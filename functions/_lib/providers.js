@@ -5,6 +5,6 @@ export const PROVIDERS = [
   { id: 'runninghub', name: 'RunningHub AI 实例', connection: 'api_key', capability: 'video', status: 'available', account_url: 'https://www.runninghub.ai/' },
   { id: 'runway', name: 'Runway', connection: 'external', status: 'export', account_url: 'https://app.runwayml.com/' },
   { id: 'kling', name: '可灵', connection: 'external', status: 'export', account_url: 'https://klingai.kuaishou.com/' },
-  { id: 'seedance', name: 'Seedance · 火山方舟', connection: 'external', capability: 'video', status: 'pending', account_url: 'https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey' },
+  { id: 'seedance', name: 'Seedance · 火山方舟', connection: 'api_key', capability: 'video', status: 'available', account_url: 'https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey' },
   { id: 'local-svd', name: '本地 SVD', connection: 'local', status: 'demo', account_url: null },
 ];

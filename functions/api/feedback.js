@@ -17,7 +17,7 @@ export async function onRequestPost(context) {
     const rating = Number(payload.rating);
     const reason = String(payload.reason || '').trim();
     const comment = String(payload.comment || '').trim();
-    if (!['runninghub', 'minimax'].includes(provider) || !jobId || jobId.length > 200) throw new HttpError('视频任务无效。', 400, 'invalid_job');
+    if (!['runninghub', 'minimax', 'seedance'].includes(provider) || !jobId || jobId.length > 200) throw new HttpError('视频任务无效。', 400, 'invalid_job');
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new HttpError('请选择1到5分。', 400, 'invalid_rating');
     if (!REASONS.has(reason)) throw new HttpError('请选择有效的问题类型。', 400, 'invalid_reason');
     if (comment.length > 300) throw new HttpError('补充说明不能超过300字。', 400, 'comment_too_long');

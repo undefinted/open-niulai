@@ -1,6 +1,7 @@
 import { errorResponse, HttpError, json } from '../../_lib/http.js';
 import { credentials, minimaxRequest } from '../../_lib/minimax.js';
 import { getAiApp, normalizeOutputs, runningHubJson, runningHubV2Json } from '../../_lib/runninghub.js';
+import { seedanceCredentials, seedanceRequest } from '../../_lib/seedance.js';
 import { assertPaidRuntime, ensureSession, publicJob } from '../../_lib/session.js';
 import { requireUser } from '../../_lib/auth.js';
 
@@ -29,6 +30,16 @@ export async function onRequestGet(context) {
         : await runningHubJson('/task/openapi/outputs', apiKey, { taskId: id });
       const result = normalizeOutputs(providerResult);
       job = { ...(stored || {}), id, provider, api_version: apiVersion, model: stored?.model || 'RunningHub 任务', ...result, updated_at: Math.floor(Date.now() / 1000) };
+    } else if (provider === 'seedance') {
+      const {apiKey:seedanceKey} = seedanceCredentials(context.request);
+      const task = await seedanceRequest('GET', `/contents/generations/tasks/${encodeURIComponent(id)}`, seedanceKey);
+      const status = String(task.status || 'queued').toLowerCase();
+      job = {
+        ...(stored || {}), id, provider:'seedance', model:stored?.model || 'Seedance', status,
+        video_url:task.content?.video_url || null,
+        error:['failed', 'cancelled', 'expired'].includes(status) ? (task.error?.message || task.message || 'Seedance 任务未完成。') : null,
+        updated_at:Math.floor(Date.now() / 1000),
+      };
     } else {
       const result = await minimaxRequest('GET', `/v2/query/video_generation/${encodeURIComponent(id)}`, apiKey, region);
       const task = result.task || {};

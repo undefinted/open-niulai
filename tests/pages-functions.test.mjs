@@ -6,6 +6,7 @@ import { createPack } from '../functions/_lib/pack.js';
 import { generateScriptCandidates } from '../functions/_lib/script-providers.js';
 import { evaluatePack } from '../functions/_lib/quality.js';
 import { buildPayload } from '../functions/_lib/minimax.js';
+import { buildSeedancePayload } from '../functions/_lib/seedance.js';
 import { aiAppCatalog, buildAiAppNodeInfo, buildNodeInfo, normalizeOutputs, publicAiApp } from '../functions/_lib/runninghub.js';
 import { assertPaidRuntime, consumeRateLimit, ensureSession, getSession, validateIdempotencyKey } from '../functions/_lib/session.js';
 import { authenticatedUser, loginUser, registerUser } from '../functions/_lib/auth.js';
@@ -107,6 +108,13 @@ test('MiniMax payload switches to adaptive for a first frame', () => {
 
 test('MiniMax payload rejects invalid duration', () => {
   assert.throws(() => buildPayload('A cat.', 20), /4-15/);
+});
+
+test('Seedance payload includes model controls and an optional first frame', () => {
+  const payload = buildSeedancePayload('Broken low-poly cat walks.', 'seedance-test-model', 10, '16:9', 'data:image/png;base64,AAAA');
+  assert.equal(payload.model, 'seedance-test-model');
+  assert.match(payload.content[0].text, /--ratio 16:9 --duration 10 --resolution 720p/);
+  assert.equal(payload.content[1].role, 'first_frame');
 });
 
 test('RunningHub maps prompt and uploaded first frame to workflow nodes', () => {
@@ -457,6 +465,40 @@ test('official MiniMax H3 submits directly without RunningHub', async () => {
     assert.equal(result.job.provider, 'minimax');
     assert.match(providerRequest.url, /api\.minimax\.io\/v2\/video_generation$/);
     assert.equal(providerRequest.body.model, 'MiniMax-H3');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('official Seedance submits directly to Volcano Ark with the selected model', async () => {
+  const values = new Map();
+  const kv = {
+    get:async (key, type) => type === 'json' && values.get(key) ? JSON.parse(values.get(key)) : values.get(key),
+    put:async (key, value) => values.set(key, value),
+  };
+  const env = {SESSION_SECRET:'a-test-secret-that-is-long-enough', JOBS:kv, RATE_LIMITS:kv, USERS:kv};
+  const auth = await signInTestUser(env);
+  const originalFetch = globalThis.fetch;
+  let providerRequest;
+  globalThis.fetch = async (url, options) => {
+    providerRequest = {url:String(url), authorization:options.headers.Authorization, body:JSON.parse(options.body)};
+    return Response.json({id:'seedance-task-1', status:'queued'});
+  };
+  try {
+    const response = await createVideoJob({
+      request:new Request('http://127.0.0.1/api/video-jobs', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'X-Provider-Key':'ark-test-key-12345', 'X-Provider-Model':'seedance-test-model', 'Idempotency-Key':'seedance_12345678', Cookie:auth.cookie},
+        body:JSON.stringify({provider:'seedance', confirm_paid:true, prompt:'STYLE LOCK: broken CGI cat.', duration:10, ratio:'16:9'}),
+      }), env,
+    });
+    const result = await response.json();
+    assert.equal(response.status, 202);
+    assert.equal(result.job.provider, 'seedance');
+    assert.match(providerRequest.url, /ark\.cn-beijing\.volces\.com\/api\/v3\/contents\/generations\/tasks$/);
+    assert.equal(providerRequest.authorization, 'Bearer ark-test-key-12345');
+    assert.equal(providerRequest.body.model, 'seedance-test-model');
+    assert.doesNotMatch([...values.values()].join(''), /ark-test-key-12345/);
   } finally {
     globalThis.fetch = originalFetch;
   }
